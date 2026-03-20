@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product Research"
+  short_description: "Deep product research and reporting."
+  default_prompt: "Clarify the topic, research it deeply, synthesize findings, and produce a structured product research report with recommendations."
