@@ -36,6 +36,23 @@ Overlay this lens where helpful:
 
 Use these selectively:
 
+### Composite Topic Parse
+
+Use when the topic is a short compound phrase and the meaning could split in multiple directions.
+
+Break the topic into:
+- research object
+- research lens
+- user goal
+- possible structural interpretations
+
+Test at least:
+- A for B
+- B for A
+- A/B as a category term
+
+Lock the working definition only after the user confirms.
+
 ### Scenario - Value - Constraint
 
 Use when deciding whether a scenario is worth prioritizing.
@@ -55,6 +72,19 @@ Ask:
 - who the representative players are
 - what capabilities define the route
 - what entry point seems most viable
+
+### Capability System Map
+
+Use when the topic is about a capability framework, platform ability, operating system, lifecycle system, or construction direction.
+
+Ask:
+- what the target object is
+- what layers the system has
+- what the core modules are
+- which modules are foundational
+- which modules are upper-layer product functions
+- which representative products map to each layer
+- what the likely evolution order is
 
 ### Current State - Gap - Opportunity - Path
 

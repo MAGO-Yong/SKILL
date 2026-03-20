@@ -46,6 +46,16 @@ Confirm:
 - Interpret the full phrase and task intent, not just isolated keywords.
 - If the topic includes a concept plus an action or goal, prioritize the full task meaning.
 - If there are two or more reasonable interpretations that would lead to different research paths, stop and align first.
+- If the topic is a composite phrase such as "A + B", explicitly determine:
+  - the research object
+  - the research lens or discipline
+  - the user's likely goal
+  - the main output object
+- For composite phrases, test at least 2-3 structural interpretations before locking direction. Common patterns include:
+  - A for B
+  - B for A
+  - A/B as a category or market term
+- Once the user clarifies the topic, rewrite the working definition, research boundary, and round focus before continuing. Do not continue on the pre-clarification path.
 
 ### High-risk topic detection
 
@@ -92,6 +102,17 @@ If I continue with my current interpretation, I will focus on:
 - [...]
 
 Please confirm whether this understanding is correct. If not, tell me which meaning, object, or question you actually want to focus on.
+
+If the user adds clarification, respond with an updated lock-in before starting research:
+
+Updated working definition:
+- [...]
+
+This round will focus on:
+- [...]
+
+This round will not focus on:
+- [...]
 
 ## Round 1 Light Intake
 
@@ -142,6 +163,27 @@ Round 1 should usually cover:
 - initial judgment
 - unresolved questions
 
+For product research topics, round 1 must also include a representative landscape sweep rather than only concept explanation.
+
+At minimum, scan:
+- representative international products or platforms
+- representative China-market products or platforms when relevant
+- major cloud vendors when relevant
+- startup or tooling players when relevant
+- open-source or ecosystem signals when relevant
+
+If the topic is strongly relevant to the China market, Chinese product ecosystems, or Chinese vendor practice, do not rely only on English-language and overseas sources.
+
+If the topic is about a capability system, platform capability, operating framework, or construction direction, do not stop at concept summary. Produce a capability map in round 1.
+
+The capability map should usually show:
+- research object
+- capability layers
+- core modules
+- representative product mapping
+- likely evolution path
+- which modules are foundation versus upper-layer functions
+
 Read [source-system.md](references/source-system.md), [analysis-frameworks.md](references/analysis-frameworks.md), and [output-modes.md](references/output-modes.md) when preparing round 1.
 
 ## Source System
@@ -161,6 +203,7 @@ Examples:
 - newsletters
 - personal blogs
 - community discussions
+- China vendor blogs and product announcements when relevant
 
 ### 2. Verification sources
 
@@ -199,6 +242,19 @@ Use them to:
 - identify leads worth tracing
 
 Do not rely on them alone for major conclusions when stronger sources are available. If a WeChat article contains an important claim, trace to original docs, talks, whitepapers, or other corroborating sources when possible.
+
+### Landscape scan requirement
+
+For product research topics, do at least one explicit landscape sweep before finalizing round 1.
+
+The sweep should identify relevant representatives across the most useful buckets, such as:
+- international vendors
+- China vendors
+- cloud vendors
+- platform/tooling companies
+- open-source ecosystems
+
+Do not assume overseas sources are sufficient when the topic has strong China-market relevance or the user is likely to need domestic product references.
 
 ## Lead Deepening And Relational Analysis
 
@@ -249,6 +305,7 @@ Look for:
 - whether value claims have evidence or only rhetoric
 - whether different players are solving the same problem or just using similar words
 - whether a capability depends on underlying data, workflow, governance, tooling, or human review
+- whether the research should be framed as a market/category, a capability system, or an internal construction direction
 
 ## Round 1 Output Style
 
@@ -260,6 +317,8 @@ Default style:
 - structured and restrained
 
 Round 1 should feel like a strong internal research memo, not a polished executive deck.
+
+If the topic is capability-system-oriented, make the capability map one of the primary outputs instead of burying it in narrative sections.
 
 Use the round 1 template in [report-template.md](assets/report-template.md).
 

@@ -16,17 +16,29 @@
 
 ## 8. Implementation Or Capability Outline
 
-## 9. Relational Analysis And Key Observations
+## 9. Capability Map
 
-## 10. Initial Maturity Judgment
+Use this section when the topic is about a capability system, platform framework, operating model, or construction direction.
 
-## 11. What Is Worth Further Attention
+Suggested structure:
+- target object
+- capability layers
+- core modules
+- representative product mapping
+- foundation versus upper-layer functions
+- likely evolution path
 
-## 12. Evidence Gaps And Unresolved Questions
+## 10. Relational Analysis And Key Observations
 
-## 13. Suggested Next Direction
+## 11. Initial Maturity Judgment
 
-## 14. Reference Types And Representative Sources
+## 12. What Is Worth Further Attention
+
+## 13. Evidence Gaps And Unresolved Questions
+
+## 14. Suggested Next Direction
+
+## 15. Reference Types And Representative Sources
 
 # Round 2 Decision-Oriented Report Template
 
