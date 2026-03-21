@@ -73,6 +73,10 @@ Ask:
 - what alternatives users already have
 - why this product could create differentiated value
 
+Also ask:
+- why users would return repeatedly
+- what the likely entry wedge is
+
 ### Market - Competition - Monetization
 
 Use when the request needs more than capability analysis.
@@ -82,6 +86,20 @@ Ask:
 - who the obvious competitors and substitutes are
 - what business model or monetization path is plausible
 - what this implies for the product direction
+
+Also ask:
+- whether the category is real, emerging, or mostly a packaging label
+- what 3 or more representative products best anchor the space
+
+### Build - Buy - Integrate
+
+Use when the topic is initiative-oriented, platform-oriented, or capability-construction oriented.
+
+Ask:
+- should this be built internally
+- should it be bought or adopted from an external platform
+- should it be integrated rather than platformized
+- what org maturity is required for each path
 
 ### Track - Player - Capability - Entry Point
 

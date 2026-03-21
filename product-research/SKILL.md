@@ -160,7 +160,8 @@ For product opportunity, consumer, or market-facing topics, use:
 4. value proposition
 5. market or adoption signals
 6. product shape and monetization hints
-7. initial judgment and next-step recommendation
+7. retention or repeat-usage logic when relevant
+8. initial judgment and next-step recommendation
 
 ### Minimum coverage
 
@@ -180,6 +181,12 @@ For product opportunity or consumer topics, also cover:
 - alternatives or competitive substitutes
 - market/adoption signals when available
 - basic business model or monetization clues when relevant
+- retention, repeat usage, or behavior loop when relevant
+- likely market entry point or wedge when relevant
+
+For broad category or market-label topics, include at least:
+- a judgment on whether the category is truly emerging, mostly marketing language, or just a feature layer
+- at least 3 representative products, vendors, or substitutes when available
 
 For product research topics, round 1 must also include a representative landscape sweep rather than only concept explanation.
 
@@ -420,6 +427,7 @@ Usually cover:
 - internal state mapping
 - capability or solution breakdown
 - value, risks, and prerequisites
+- build vs buy or build vs integrate judgment when relevant
 - what to do
 - what not to do yet
 - next-step validation plan
