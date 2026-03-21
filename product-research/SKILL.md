@@ -46,6 +46,7 @@ Confirm:
 - Interpret the full phrase and task intent, not just isolated keywords.
 - If the topic includes a concept plus an action or goal, prioritize the full task meaning.
 - If there are two or more reasonable interpretations that would lead to different research paths, stop and align first.
+- If the user gives examples, treat them as examples rather than hard scope boundaries unless the user explicitly says "only", "mainly", or otherwise constrains the scope.
 - If the topic is a composite phrase such as "A + B", explicitly determine:
   - the research object
   - the research lens or discipline
@@ -141,13 +142,24 @@ Help the user move from vague awareness to structured understanding:
 
 ### Default framework
 
-Use:
+Choose the default lens based on topic type:
+
+For concept, system, platform, or capability topics, use:
 1. definition and boundary
 2. problem and drivers
 3. scenarios
 4. value logic
 5. industry practices and representative approaches
 6. implementation outline
+7. initial judgment and next-step recommendation
+
+For product opportunity, consumer, or market-facing topics, use:
+1. target users and jobs to be done
+2. problem and unmet need
+3. alternatives and competition
+4. value proposition
+5. market or adoption signals
+6. product shape and monetization hints
 7. initial judgment and next-step recommendation
 
 ### Minimum coverage
@@ -162,6 +174,12 @@ Round 1 should usually cover:
 - industry maturity and representative players
 - initial judgment
 - unresolved questions
+
+For product opportunity or consumer topics, also cover:
+- target users
+- alternatives or competitive substitutes
+- market/adoption signals when available
+- basic business model or monetization clues when relevant
 
 For product research topics, round 1 must also include a representative landscape sweep rather than only concept explanation.
 
@@ -340,6 +358,7 @@ Turn "this is worth further study" into "this is the exact question the next rou
 - who the target user or object is
 - what internal context or constraints matter
 - what final output form is desired
+- who the output is for when the work is initiative-, proposal-, or review-oriented
 - what decision the user wants help making
 
 ### Suggested prompt structure

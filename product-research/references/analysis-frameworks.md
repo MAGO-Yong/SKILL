@@ -63,6 +63,26 @@ Ask:
 - what value is created
 - what must be true for the value to hold
 
+### User - Problem - Alternative - Value
+
+Use when the topic is a product opportunity, user-facing product, or consumer-facing direction.
+
+Ask:
+- who the target user is
+- what job, pain point, or unmet need exists
+- what alternatives users already have
+- why this product could create differentiated value
+
+### Market - Competition - Monetization
+
+Use when the request needs more than capability analysis.
+
+Ask:
+- what market or adoption signals exist
+- who the obvious competitors and substitutes are
+- what business model or monetization path is plausible
+- what this implies for the product direction
+
 ### Track - Player - Capability - Entry Point
 
 Use when the request is strongly competitive or market-route oriented.

@@ -32,6 +32,12 @@ Characteristics:
 - emphasizes background, problem, practices, internal mapping, recommendation, and next actions
 - suitable for internal presentation or evaluation
 
+When using this mode, clarify the audience if it matters:
+- manager or leadership
+- review committee
+- cross-functional team
+- technical design audience
+
 ## Always Keep
 
 Regardless of mode, keep:
