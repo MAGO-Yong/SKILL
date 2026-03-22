@@ -67,6 +67,7 @@ Treat the topic as high-risk and trigger alignment when any of these is true:
 - the topic is a compound phrase with unclear center of gravity
 - the user describes what they want to achieve, but not clearly what object to research
 - the same description could lead to very different research paths
+- the topic appears to be an internal codename, internal methodology name, or internal product name
 
 Examples but not limited to:
 - capability
@@ -115,6 +116,13 @@ This round will focus on:
 This round will not focus on:
 - [...]
 
+If the topic appears to be an internal codename or internal framework and there is not enough context, explicitly state that this round is limited by missing internal context and switch into internal-term-safe mode:
+
+- do not invent a public definition
+- do not over-generalize from similar public concepts
+- ask for the minimum context needed to continue
+- if the user does not provide it, produce a boundary-managed first-round note rather than pretending full understanding
+
 ## Round 1 Light Intake
 
 After topic alignment, ask only the minimum needed to start.
@@ -125,6 +133,16 @@ Confirm:
 - what they most want to understand first
 
 Do not ask for full internal context, target users, output form, and initiative constraints in the first round unless the user is already clearly in a proposal/initiative stage.
+
+If the user explicitly signals that they are new to the topic or want to "understand", "learn", "get familiar", or "build complete cognition" first, switch round 1 into learning-oriented mode rather than compressed memo mode.
+
+In learning-oriented mode:
+- explain before abstracting
+- prefer full-sentence explanation over short point-form bullets
+- introduce adjacent concepts step by step
+- use simple comparisons and concrete examples
+- avoid dropping unexplained jargon too early
+- assume the reader may be seeing the topic for the first time
 
 ## Round 1 Foundational Research
 
@@ -140,6 +158,12 @@ Help the user move from vague awareness to structured understanding:
 - how the industry is approaching it
 - whether it is worth deeper follow-up
 
+If the user's goal is first-time understanding, round 1 must also help them:
+- understand why the concept appeared now
+- distinguish it from nearby concepts
+- understand each core capability with explanation and examples
+- leave with a mental model rather than only a framework
+
 ### Default framework
 
 Choose the default lens based on topic type:
@@ -151,7 +175,34 @@ For concept, system, platform, or capability topics, use:
 4. value logic
 5. industry practices and representative approaches
 6. implementation outline
-7. initial judgment and next-step recommendation
+7. limitations and tradeoffs when relevant
+8. initial judgment and next-step recommendation
+
+When the goal is first-time learning, expand this into:
+1. what the term means in plain language
+2. what exactly is being studied and what is not
+3. why the concept emerged now
+4. nearby concepts and differences
+5. core capability blocks, each with explanation
+6. concrete examples or mini-scenarios
+7. current industry maturity
+8. initial judgment and what to learn next
+
+For internal technical product, platform-planning, governance, observability, diagnosis, or solution-design topics, use:
+1. background and concrete pain points
+2. quantifiable goals or target outcomes when possible
+3. why traditional or generic approaches are not enough when relevant
+4. current-state constraints and dependencies
+5. existing platform split, reuse boundary, and build-vs-reuse judgment when relevant
+6. overall solution or system flow
+7. key design points, capability modules, or data/object model
+8. concrete examples of schema, entity types, workflow steps, or object instances when available
+9. concrete key objects to observe, govern, analyze, or control when relevant
+10. design tradeoffs such as performance, complexity, maintainability, realtime versus offline split, or abstraction boundary when relevant
+9. demand priority matrix, or at least module priority and urgency by user/business type when relevant
+11. consumption form such as workbench, report, interface, or workflow when relevant
+12. phased rollout, business landing targets, milestone expectation, scope boundary, and what is not covered yet
+13. production rollout advice, implementation pitfalls, and next-step recommendation
 
 For product opportunity, consumer, or market-facing topics, use:
 1. target users and jobs to be done
@@ -184,9 +235,27 @@ For product opportunity or consumer topics, also cover:
 - retention, repeat usage, or behavior loop when relevant
 - likely market entry point or wedge when relevant
 
+For internal technical product, platform, governance, observability, diagnosis, or design topics, also cover when relevant:
+- quantifiable targets
+- why traditional or generic approaches are insufficient
+- scope boundaries and non-goals
+- upstream/downstream dependencies
+- existing platform split and reuse boundary
+- current gaps in data, tooling, or process
+- concrete schema, entity, or module examples when available
+- concrete key objects under management or observation
+- key design tradeoffs and why a given split is preferred
+- demand priority matrix or module/user priority when there is more than one major module
+- workbench/report/interface consumption shape
+- phased rollout path
+- business landing targets or milestone expectations when the topic is initiative-oriented
+- production pitfalls or rollout advice
+
 For broad category or market-label topics, include at least:
 - a judgment on whether the category is truly emerging, mostly marketing language, or just a feature layer
 - at least 3 representative products, vendors, or substitutes when available
+
+If the user's aim is learning rather than only scanning, do not stop at naming representative products. Explain what each representative product demonstrates about the category.
 
 For product research topics, round 1 must also include a representative landscape sweep rather than only concept explanation.
 
@@ -208,6 +277,81 @@ The capability map should usually show:
 - representative product mapping
 - likely evolution path
 - which modules are foundation versus upper-layer functions
+
+If the topic is closer to an internal technical product plan or solution design, do not stop at capability mapping. Also produce a plan-oriented structure covering:
+- background
+- target outcomes
+- why common approaches are insufficient
+- existing platform split and reuse boundary
+- current constraints
+- overall flow or architecture
+- key design points
+- concrete examples when available
+- design tradeoffs and why the recommended split makes sense
+- concrete managed or observed objects
+- module priority or demand priority matrix when relevant
+- consumption form
+- phased rollout, landing targets, or milestone expectation
+
+If the topic is specifically about AI application evaluation, AI evaluation platforms, or evaluation systems for AI applications, treat the main research axis as:
+
+`observability -> trace data -> dataset -> evaluator -> experiment -> optimization/release loop`
+
+Do not treat evaluation as an isolated module when the evidence indicates it depends on data return-flow, trace completeness, or platform integration.
+
+For AI application evaluation topics, explicitly cover when possible:
+- the difference between application evaluation and model evaluation
+- why trace/data return-flow is the foundation
+- what should be platform-owned versus business-owned
+- how datasets, evaluators, evaluation objects, experiments, and release gates connect
+- whether data loop or evaluation loop should be treated as the primary product backbone
+
+## Learning-Oriented Writing Rules
+
+Use this mode when the user is new to the topic or explicitly wants to learn first.
+
+### Goals
+
+The report should help a first-time reader:
+- understand the concept without prior context
+- build a usable mental model
+- know why the topic matters
+- understand the differences versus adjacent concepts
+- understand the main capability blocks with examples
+
+### Writing rules
+
+- do not rely only on terse bullets
+- explain each major point in 2-5 sentences when it introduces a new concept
+- define a term before using it repeatedly
+- when introducing jargon, explain it immediately in plain language
+- use "for example" and mini-scenarios liberally when they improve comprehension
+- prefer "this means..." and "in practice..." explanations
+- do not jump directly from definition to judgment without explanation
+
+### Preferred structure
+
+1. plain-language definition
+2. why this topic matters now
+3. what problem it solves
+4. how it differs from similar concepts
+5. core capability blocks, each explained
+6. one or more concrete examples
+7. industry status and representative practices
+8. current judgment and what to explore next
+
+For platform, model, architecture, or data-model topics, do not stay at only the abstract layer when examples are available. Prefer including at least 2-5 concrete examples such as:
+- entity or schema names
+- relation examples
+- workflow examples
+- typical object instances
+- source or discovery mechanism examples
+
+When discussing architecture, also explain major tradeoffs when evidence supports it, for example:
+- why graph versus relational or static config approaches differ
+- why realtime versus precomputed paths are split
+- why a middle layer is preferred over direct coupling
+- why some modules should be reused instead of rebuilt
 
 Read [source-system.md](references/source-system.md), [analysis-frameworks.md](references/analysis-frameworks.md), and [output-modes.md](references/output-modes.md) when preparing round 1.
 
