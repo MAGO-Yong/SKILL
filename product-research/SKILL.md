@@ -38,7 +38,6 @@ Confirm:
 - what key terms mean in this context
 - what the current research boundary is
 - what direction to use for the first round of research
-- what decision or understanding the user actually wants from this round
 
 ### Core rules
 
@@ -57,8 +56,6 @@ Confirm:
   - A for B
   - B for A
   - A/B as a category or market term
-- Before moving past topic alignment, explicitly infer the user's likely decision context, not just the topic meaning.
-- Topic alignment is not complete until the research object and the user's likely question are both visible.
 - Once the user clarifies the topic, rewrite the working definition, research boundary, and round focus before continuing. Do not continue on the pre-clarification path.
 
 ### High-risk topic detection
@@ -113,9 +110,6 @@ If the user adds clarification, respond with an updated lock-in before starting 
 Updated working definition:
 - [...]
 
-My current hypothesis about why you want this researched:
-- [...]
-
 This round will focus on:
 - [...]
 
@@ -138,30 +132,6 @@ Confirm:
 - how familiar they already are with the topic
 - what they most want to understand first
 
-### Default minimal intake template
-
-Unless the user has already made these clear, try to clarify the following 5 items in the lightest possible way:
-- topic: what exact object, concept, company, system, or direction should be researched
-- role or lens: what perspective to optimize for, such as platform PM, infra owner, buyer, investor, founder, or internal solution owner
-- core question: what the user most wants answered in this round
-- round mode: whether this round should be learning-oriented or decision-oriented
-- avoid list: what failure mode to avoid, such as generic concept explanation, product-name dumping, or premature conclusions
-
-Do not blindly ask all 5 questions every time. If some are already implied by the user's wording or prior context, infer them and state the inference briefly instead of asking.
-
-If the topic is high-risk, emerging, compound, or likely to drift without user context, prefer a short grouped intake prompt covering these items before formal research.
-
-When asking, prefer this structure:
-
-Before I start formal research, I want to lock 5 things so the memo is useful rather than generic:
-- Topic: [...]
-- Your role or lens: [...]
-- The main question you want answered: [...]
-- This round should lean: learning-oriented / decision-oriented
-- Please avoid: [...]
-
-If some of these are already implied, I should say so and only ask for the missing or high-risk items.
-
 Do not ask for full internal context, target users, output form, and initiative constraints in the first round unless the user is already clearly in a proposal/initiative stage.
 
 If the user explicitly signals that they are new to the topic or want to "understand", "learn", "get familiar", or "build complete cognition" first, switch round 1 into learning-oriented mode rather than compressed memo mode.
@@ -173,6 +143,67 @@ In learning-oriented mode:
 - use simple comparisons and concrete examples
 - avoid dropping unexplained jargon too early
 - assume the reader may be seeing the topic for the first time
+
+## Pre-Research Source Coverage Checklist
+
+Before starting Round 1 foundational research, complete this checklist. Do not begin writing the report until at least 3 of the 5 boxes are checked.
+
+```
+□ Discovery layer: searched at least one non-official source (blog, newsletter, PR, community discussion) to find leads
+□ Verification layer: found at least one official doc, whitepaper, or product page to confirm core claims
+□ Judgment layer: found at least one independent source (not Gartner, not the vendor) that assesses or critiques the topic
+□ China check: determined whether this topic has China-market relevance; if yes, executed at least one Chinese-language search
+□ Counter-evidence check: actively searched for criticism, failure cases, or data that contradicts the dominant narrative
+```
+
+### China-language search requirement
+
+If the topic has any of the following characteristics, the China check is mandatory:
+- topic originated or has major adoption in the China market (e.g., Superapps, AI governance, platform engineering)
+- topic involves products or vendors with significant China presence
+- the user or organization is based in China
+
+When the China check is required, execute at least one search in Chinese using patterns like:
+- `{topic中文名} 中国 实践 案例`
+- `{topic中文名} 落地 企业`
+- `{topic中文名} site:36kr.com OR site:huxiu.com OR site:infoq.cn`
+
+**Note on WeChat public accounts:** WeChat articles cannot be fetched by machine (returns environment error). Do not attempt to retry or find workarounds — this will stall research.
+
+Instead, treat WeChat article titles and author names as **search leads only**:
+- Take the article title or topic keyword and search for it on other platforms (Zhihu, Juejin, 36kr, InfoQ)
+- If a similar article or discussion is found, use that as the source
+- If nothing equivalent is found, move on — do not spend more than one search attempt on this
+
+### Information retrieval tool priority
+
+Use tools in this order based on the situation:
+
+| Situation | Tool to use |
+|-----------|------------|
+| Standard web pages, blogs, docs | `web_fetch` |
+| Pages with light anti-bot protection (36kr, Huxiu) | Jina Reader skill (`jina-reader`) |
+| Pages with heavy anti-bot / JS-rendered content | Scrapling skill (`scrapling`) |
+| WeChat public accounts | Cannot fetch directly — search for syndicated versions |
+| Web search for discovery | `web_search` — include Chinese keywords when China check applies |
+
+### Mandatory cross-validation
+
+For any statistic, case study outcome, or market size figure that will be used as a key conclusion:
+- identify the original source (not the article citing it)
+- note the source type: primary analyst (Gartner/IDC/Forrester) vs. vendor-funded vs. independent research
+- if the source is vendor-funded, add explicit note: "Source is vendor-published; treat with appropriate skepticism and seek independent corroboration"
+- if only one source supports a key claim, mark it: "Single source; confidence: medium"
+
+### Repeated topic handling
+
+If this topic has been researched before (appears in multiple Gartner years or is a recurring theme):
+- do not re-explain what was already established
+- lead with: "What changed since the last research cycle"
+- focus on new developments, updated maturity assessments, and revised judgment
+- make the report self-contained without requiring the reader to have read prior versions
+
+---
 
 ## Round 1 Foundational Research
 
@@ -193,10 +224,6 @@ If the user's goal is first-time understanding, round 1 must also help them:
 - distinguish it from nearby concepts
 - understand each core capability with explanation and examples
 - leave with a mental model rather than only a framework
-
-Round 1 should not stop at concept explanation when the user's real need is directional judgment. In that case, make the memo answer both:
-- what this is
-- why this matters for the user's likely decision context
 
 ### Default framework
 
@@ -289,11 +316,6 @@ For broad category or market-label topics, include at least:
 - a judgment on whether the category is truly emerging, mostly marketing language, or just a feature layer
 - at least 3 representative products, vendors, or substitutes when available
 
-For emerging-concept topics, also include:
-- whether the term itself is publicly established, emerging in limited circles, or mostly an analytical synthesis
-- which parts of the memo are strongly evidenced versus interpretive synthesis
-- what would need verification in round 2 before using the memo as stronger decision support
-
 If the user's aim is learning rather than only scanning, do not stop at naming representative products. Explain what each representative product demonstrates about the category.
 
 For product research topics, round 1 must also include a representative landscape sweep rather than only concept explanation.
@@ -317,12 +339,6 @@ The capability map should usually show:
 - likely evolution path
 - which modules are foundation versus upper-layer functions
 
-When mapping representative products, do not only name them. For each important representative, explain:
-- what layer or module it primarily represents
-- what it does not cover
-- what trend or category signal it supports
-- what conclusion it cannot support on its own
-
 If the topic is closer to an internal technical product plan or solution design, do not stop at capability mapping. Also produce a plan-oriented structure covering:
 - background
 - target outcomes
@@ -337,6 +353,32 @@ If the topic is closer to an internal technical product plan or solution design,
 - module priority or demand priority matrix when relevant
 - consumption form
 - phased rollout, landing targets, or milestone expectation
+
+If the topic is about **AI Agent engineering, Agent reliability, Harness Engineering, or AI system stability**, treat the main research axis as:
+
+`Agent failure modes → Harness capability layers (context / constraints / entropy) → measurement (eval harness / SLO) → PM ownership boundaries`
+
+For these topics, explicitly cover when possible:
+- what new failure modes emerge that traditional SRE/monitoring cannot detect (e.g. model drift, cognitive errors while system is operationally healthy)
+- the three Harness Engineering capability layers and how they map to internal buildable capabilities
+- the difference between "fixing the model" vs "adjusting the system" — and which is the PM's lever
+- industry evidence of Harness-style improvements (prefer concrete benchmark data over general claims)
+- who owns what: research/algo team vs SRE vs PM, and where PM's definition/measurement role is irreplaceable
+- maturity signal: is this concept still exploratory, or are there production-grade practices to reference
+- China-market adoption: is the concept being discussed domestically, and at what depth
+
+If the topic is about **platform Agent-Native transformation** (how existing internal platforms evolve to be callable by Agents and accessible via conversational interfaces), treat the main research axis as:
+
+`current platform design assumptions (human-facing GUI) → Agent-as-user shift → SKILL/capability layer design → conversational entry point redesign`
+
+For these topics, explicitly cover when possible:
+- why existing GUI-centric platform designs do not translate to Agent-callable interfaces
+- the difference between "adding an AI assistant" and "redesigning user flow with conversation as primary path"
+- SKILL design principles for Agent consumption: task-oriented vs feature-oriented, atomic capability decomposition
+- what capabilities should be SKILL-ified first (frequency, value, boundary clarity)
+- how conversational entry points should be designed: intent → Agent orchestration → SKILL execution → structured output
+- PM's role in driving this: which decisions require PM leadership vs engineering execution
+- maturity signal: what has been proven in industry vs what remains experimental
 
 If the topic is specifically about AI application evaluation, AI evaluation platforms, or evaluation systems for AI applications, treat the main research axis as:
 
@@ -373,8 +415,6 @@ The report should help a first-time reader:
 - use "for example" and mini-scenarios liberally when they improve comprehension
 - prefer "this means..." and "in practice..." explanations
 - do not jump directly from definition to judgment without explanation
-- do not confuse the researcher's synthesis with an industry-standard definition
-- when a concept is not yet standardized, say so plainly before using it as an organizing frame
 
 ### Preferred structure
 
@@ -472,51 +512,6 @@ The sweep should identify relevant representatives across the most useful bucket
 
 Do not assume overseas sources are sufficient when the topic has strong China-market relevance or the user is likely to need domestic product references.
 
-## Evidence And Judgment Discipline
-
-Separate facts, market signals, and synthesis. Do not present all three with the same level of certainty.
-
-### Required evidence labels in reasoning
-
-When the topic is emerging, category-forming, or terminology-unstable, explicitly distinguish:
-- observed fact: directly supported by strong sources
-- market signal: supported by partial but meaningful evidence
-- synthesis or inference: your interpretation built from multiple clues
-
-Do not silently upgrade synthesis into fact.
-
-### Strong-claim rule
-
-Before making a strong claim such as:
-- "this is a new category"
-- "the industry is converging on X"
-- "company Y proves Z"
-- "this concept started in month/year A"
-
-check whether the evidence is strong enough. If not, downgrade the wording to:
-- "appears to be"
-- "is emerging as"
-- "is being framed by some practitioners as"
-- "based on current public signals"
-
-### Source-strength handling
-
-Do not let strong and weak sources blend into a single confident narrative.
-
-If a memo uses mixed-strength evidence, make that visible by separating:
-- stronger evidence and verified examples
-- weaker but directionally useful signals
-
-When a claim depends mainly on one article, one speaker, or one vendor, say so.
-
-### Category-formation rule
-
-For topics that look like new categories, always answer:
-- is this a mature category, an emerging but unstable category, or mostly a packaging label
-- who is explicitly using the term
-- who is doing the underlying practice without using the term
-- whether the category boundary is stable enough to anchor product strategy
-
 ## Lead Deepening And Relational Analysis
 
 Do not read sources in isolation.
@@ -567,7 +562,6 @@ Look for:
 - whether different players are solving the same problem or just using similar words
 - whether a capability depends on underlying data, workflow, governance, tooling, or human review
 - whether the research should be framed as a market/category, a capability system, or an internal construction direction
-- whether the user's real question is about understanding, prioritization, product opportunity, or internal ownership
 
 ## Round 1 Output Style
 
@@ -581,19 +575,6 @@ Default style:
 Round 1 should feel like a strong internal research memo, not a polished executive deck.
 
 If the topic is capability-system-oriented, make the capability map one of the primary outputs instead of burying it in narrative sections.
-
-Round 1 must be conclusion-forward, but the conclusion should be restrained. The memo should not sound more certain than the evidence supports.
-
-Before drafting the full memo, form and internally test 1-3 candidate core judgments. Prefer the one that:
-- best fits the user's likely decision context
-- is actually supported by the evidence
-- organizes the memo without forcing the evidence to fit
-
-The opening of round 1 should usually make these explicit:
-- the working definition
-- the user's likely underlying question
-- the current maturity judgment
-- the main caveat or uncertainty if the term/category is still forming
 
 Use the round 1 template in [report-template.md](assets/report-template.md).
 
@@ -726,6 +707,22 @@ Research is not complete if it only:
 - gives no unresolved questions
 - cannot answer "so what"
 
+Also check:
+- at least one Chinese-language source was consulted (if China check applies)
+- at least one counter-evidence or failure case was searched for (even if none found — state that explicitly)
+- repeated topics lead with "what changed" rather than re-explaining established context
+- vendor-funded statistics are flagged as such
+- capability map is present for capability-system topics (not substituted by bullet lists)
+
+### Complexity warning requirement
+
+For any topic where the implementation is non-trivial, include a **Complexity Warning** section covering:
+- what organizations typically underestimate
+- common failure modes in early adoption
+- at least one documented case where adoption did not deliver expected results (if findable)
+
+This section should be present even when the overall judgment is positive. Omitting it creates misleading optimism.
+
 ### Fact / judgment / recommendation separation
 
 Always separate:
@@ -745,6 +742,18 @@ Treat evidence strength roughly as:
 - very weak: unattributed claims or vague marketing statements
 
 Avoid using weak evidence alone for high-impact conclusions.
+
+**Source type labeling (required for key statistics and case study outcomes):**
+
+| Source type | Label to use in report |
+|-------------|----------------------|
+| Primary analyst (Gartner, IDC, Forrester) | No label needed |
+| Independent academic / research institution | No label needed |
+| Vendor-published study or press release | *(vendor-funded)* |
+| Single source, unverified | *(single source; confidence: medium)* |
+| Market size from non-primary analyst | *(source: [name]; verify with primary analyst)* |
+
+When two sources conflict on the same claim, surface the conflict explicitly rather than picking one silently. Example: "GitHub reports 55% productivity gain; Google's independent study found 6%. The gap likely reflects different task types and measurement methods."
 
 ### Anti-hallucination rules
 
