@@ -38,6 +38,7 @@ Confirm:
 - what key terms mean in this context
 - what the current research boundary is
 - what direction to use for the first round of research
+- what decision or understanding the user actually wants from this round
 
 ### Core rules
 
@@ -56,6 +57,8 @@ Confirm:
   - A for B
   - B for A
   - A/B as a category or market term
+- Before moving past topic alignment, explicitly infer the user's likely decision context, not just the topic meaning.
+- Topic alignment is not complete until the research object and the user's likely question are both visible.
 - Once the user clarifies the topic, rewrite the working definition, research boundary, and round focus before continuing. Do not continue on the pre-clarification path.
 
 ### High-risk topic detection
@@ -110,6 +113,9 @@ If the user adds clarification, respond with an updated lock-in before starting 
 Updated working definition:
 - [...]
 
+My current hypothesis about why you want this researched:
+- [...]
+
 This round will focus on:
 - [...]
 
@@ -131,6 +137,30 @@ Confirm:
 - why the user wants to research this now
 - how familiar they already are with the topic
 - what they most want to understand first
+
+### Default minimal intake template
+
+Unless the user has already made these clear, try to clarify the following 5 items in the lightest possible way:
+- topic: what exact object, concept, company, system, or direction should be researched
+- role or lens: what perspective to optimize for, such as platform PM, infra owner, buyer, investor, founder, or internal solution owner
+- core question: what the user most wants answered in this round
+- round mode: whether this round should be learning-oriented or decision-oriented
+- avoid list: what failure mode to avoid, such as generic concept explanation, product-name dumping, or premature conclusions
+
+Do not blindly ask all 5 questions every time. If some are already implied by the user's wording or prior context, infer them and state the inference briefly instead of asking.
+
+If the topic is high-risk, emerging, compound, or likely to drift without user context, prefer a short grouped intake prompt covering these items before formal research.
+
+When asking, prefer this structure:
+
+Before I start formal research, I want to lock 5 things so the memo is useful rather than generic:
+- Topic: [...]
+- Your role or lens: [...]
+- The main question you want answered: [...]
+- This round should lean: learning-oriented / decision-oriented
+- Please avoid: [...]
+
+If some of these are already implied, I should say so and only ask for the missing or high-risk items.
 
 Do not ask for full internal context, target users, output form, and initiative constraints in the first round unless the user is already clearly in a proposal/initiative stage.
 
@@ -163,6 +193,10 @@ If the user's goal is first-time understanding, round 1 must also help them:
 - distinguish it from nearby concepts
 - understand each core capability with explanation and examples
 - leave with a mental model rather than only a framework
+
+Round 1 should not stop at concept explanation when the user's real need is directional judgment. In that case, make the memo answer both:
+- what this is
+- why this matters for the user's likely decision context
 
 ### Default framework
 
@@ -255,6 +289,11 @@ For broad category or market-label topics, include at least:
 - a judgment on whether the category is truly emerging, mostly marketing language, or just a feature layer
 - at least 3 representative products, vendors, or substitutes when available
 
+For emerging-concept topics, also include:
+- whether the term itself is publicly established, emerging in limited circles, or mostly an analytical synthesis
+- which parts of the memo are strongly evidenced versus interpretive synthesis
+- what would need verification in round 2 before using the memo as stronger decision support
+
 If the user's aim is learning rather than only scanning, do not stop at naming representative products. Explain what each representative product demonstrates about the category.
 
 For product research topics, round 1 must also include a representative landscape sweep rather than only concept explanation.
@@ -277,6 +316,12 @@ The capability map should usually show:
 - representative product mapping
 - likely evolution path
 - which modules are foundation versus upper-layer functions
+
+When mapping representative products, do not only name them. For each important representative, explain:
+- what layer or module it primarily represents
+- what it does not cover
+- what trend or category signal it supports
+- what conclusion it cannot support on its own
 
 If the topic is closer to an internal technical product plan or solution design, do not stop at capability mapping. Also produce a plan-oriented structure covering:
 - background
@@ -328,6 +373,8 @@ The report should help a first-time reader:
 - use "for example" and mini-scenarios liberally when they improve comprehension
 - prefer "this means..." and "in practice..." explanations
 - do not jump directly from definition to judgment without explanation
+- do not confuse the researcher's synthesis with an industry-standard definition
+- when a concept is not yet standardized, say so plainly before using it as an organizing frame
 
 ### Preferred structure
 
@@ -425,6 +472,51 @@ The sweep should identify relevant representatives across the most useful bucket
 
 Do not assume overseas sources are sufficient when the topic has strong China-market relevance or the user is likely to need domestic product references.
 
+## Evidence And Judgment Discipline
+
+Separate facts, market signals, and synthesis. Do not present all three with the same level of certainty.
+
+### Required evidence labels in reasoning
+
+When the topic is emerging, category-forming, or terminology-unstable, explicitly distinguish:
+- observed fact: directly supported by strong sources
+- market signal: supported by partial but meaningful evidence
+- synthesis or inference: your interpretation built from multiple clues
+
+Do not silently upgrade synthesis into fact.
+
+### Strong-claim rule
+
+Before making a strong claim such as:
+- "this is a new category"
+- "the industry is converging on X"
+- "company Y proves Z"
+- "this concept started in month/year A"
+
+check whether the evidence is strong enough. If not, downgrade the wording to:
+- "appears to be"
+- "is emerging as"
+- "is being framed by some practitioners as"
+- "based on current public signals"
+
+### Source-strength handling
+
+Do not let strong and weak sources blend into a single confident narrative.
+
+If a memo uses mixed-strength evidence, make that visible by separating:
+- stronger evidence and verified examples
+- weaker but directionally useful signals
+
+When a claim depends mainly on one article, one speaker, or one vendor, say so.
+
+### Category-formation rule
+
+For topics that look like new categories, always answer:
+- is this a mature category, an emerging but unstable category, or mostly a packaging label
+- who is explicitly using the term
+- who is doing the underlying practice without using the term
+- whether the category boundary is stable enough to anchor product strategy
+
 ## Lead Deepening And Relational Analysis
 
 Do not read sources in isolation.
@@ -475,6 +567,7 @@ Look for:
 - whether different players are solving the same problem or just using similar words
 - whether a capability depends on underlying data, workflow, governance, tooling, or human review
 - whether the research should be framed as a market/category, a capability system, or an internal construction direction
+- whether the user's real question is about understanding, prioritization, product opportunity, or internal ownership
 
 ## Round 1 Output Style
 
@@ -488,6 +581,19 @@ Default style:
 Round 1 should feel like a strong internal research memo, not a polished executive deck.
 
 If the topic is capability-system-oriented, make the capability map one of the primary outputs instead of burying it in narrative sections.
+
+Round 1 must be conclusion-forward, but the conclusion should be restrained. The memo should not sound more certain than the evidence supports.
+
+Before drafting the full memo, form and internally test 1-3 candidate core judgments. Prefer the one that:
+- best fits the user's likely decision context
+- is actually supported by the evidence
+- organizes the memo without forcing the evidence to fit
+
+The opening of round 1 should usually make these explicit:
+- the working definition
+- the user's likely underlying question
+- the current maturity judgment
+- the main caveat or uncertainty if the term/category is still forming
 
 Use the round 1 template in [report-template.md](assets/report-template.md).
 
