@@ -156,6 +156,49 @@ Before starting Round 1 foundational research, complete this checklist. Do not b
 □ Counter-evidence check: actively searched for criticism, failure cases, or data that contradicts the dominant narrative
 ```
 
+### AI Engineering authoritative source scan (mandatory for AI-related topics)
+
+For any topic related to AI agents, AI reliability, LLM engineering, Harness Engineering, AI system design, evaluation/observability, or platform AI-native transformation, **before** running any `web_search`, actively scan the following authoritative sources directly using `web_fetch` or `site:` search.
+
+**Why:** Web search finds content that is already widely cited. The most valuable first-hand engineering practices from AI labs are often published as engineering blog posts or GitHub docs that are not yet widely indexed at time of research. Waiting for web search to surface them means missing the original.
+
+#### Tier 1 — First-hand engineering practice (always check for AI topics)
+
+Use `web_search` with `site:` operator to scan each source:
+
+| Source | Search pattern | What to find |
+|--------|---------------|-------------|
+| Anthropic Engineering Blog | `site:anthropic.com/engineering {keyword}` | Claude / Agent SDK / Harness design technical articles |
+| OpenAI Research & Index | `site:openai.com {keyword}` | Official experiments, engineering reports |
+| LangChain Blog | `site:blog.langchain.com {keyword}` | Agent framework engineering practices |
+| Google DeepMind | `site:deepmind.google {keyword}` | Research and applied AI engineering |
+| Meta AI Blog | `site:ai.meta.com/blog {keyword}` | Meta AI engineering and model practices |
+
+If a Tier 1 source returns a result, **fetch the full article** using `web_fetch` before continuing to other sources. These are primary sources — treat them with the same weight as official docs.
+
+#### Tier 2 — Official product and SDK documentation (check when implementation detail is needed)
+
+| Source | What to find |
+|--------|-------------|
+| `docs.anthropic.com` | Claude API, Agent SDK, prompt guides, tool use |
+| `platform.openai.com/docs` | OpenAI platform API, Assistants, function calling |
+| `docs.langchain.com` | LangChain / LangSmith integration docs |
+| `github.com/anthropics` | Anthropic open-source repos including Claude Code, skills |
+| `smith.langchain.com` | LangSmith observability and evaluation docs |
+
+#### Tier 3 — Discovery and community (after Tier 1 and 2 are checked)
+
+Then proceed with standard `web_search` discovery.
+
+#### Concept origin tracing rule
+
+When a new term or concept is discovered (e.g., "Harness Engineering", "context anxiety", "Ralph Wiggum loop"), **always attempt to find the original source**:
+1. Search for the exact phrase in quotes: `"concept name" site:blog.langchain.com OR site:anthropic.com OR site:openai.com`
+2. If the term was coined by a specific person (engineer, researcher), find their original post or blog
+3. Record the original definition separately from secondary analysis and commentary
+
+Do not rely on Chinese summaries or third-party analysis for the definition of a new technical concept. Always trace back to the original author's words.
+
 ### China-language search requirement
 
 If the topic has any of the following characteristics, the China check is mandatory:
