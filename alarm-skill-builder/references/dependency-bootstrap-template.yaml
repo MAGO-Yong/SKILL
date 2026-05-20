@@ -1,0 +1,76 @@
+version: 0.1
+purpose: >
+  Template for the generated diagnosis Skill's minimal dependency bootstrap
+  contract. This is not the Builder's full registry. It contains only the
+  platform Skills/CLI/API/adapters required by one generated diagnosis Skill.
+
+principles:
+  - "Installing alarm-skill-builder does not install every platform dependency."
+  - "Derive required dependencies from confirmed SOP nodes, not from the full registry."
+  - "Required dependencies must have install source, auth contract, invocation method, preflight verification, and fallback behavior."
+  - "Optional dependencies may be skipped, but the generated report must mark skipped enrichment as unknown or not-run."
+  - "Action dependencies are forbidden unless explicitly gated by the user and platform policy."
+
+runtime_environment:
+  target_agent: "openclaw|cc|codex|other"
+  non_interactive_required: true
+  no_hidden_local_dependencies: true
+  capability_resolver_required: true
+  local_filesystem_assumptions_allowed: false
+
+required:
+  - dependency_id: ""
+    platform: ""
+    required_by_nodes: []
+    purpose: ""
+    install:
+      source_type: "skillhub|codewizhub|docs|npm|pip|internal_package|builtin|manual"
+      source_url: ""
+      package_or_skill_name: ""
+      install_command: ""
+      installed_state: "installed|missing|unknown"
+    invocation:
+      method: "skill|cli|api|adapter|script_wrapper"
+      entrypoint: ""
+      non_interactive: true
+      output_format: "json|table|text|unknown"
+      target_runtime_support:
+        openclaw: "supported|unsupported|unknown"
+        cc: "supported|unsupported|unknown"
+        codex: "supported|unsupported|unknown"
+    auth:
+      identity_source: ""
+      authentication: ""
+      permission_check: ""
+      call_authorization: ""
+      secret_runtime: ""
+      renewal_policy: ""
+    preflight:
+      verification_supported: true
+      verification_input_example: {}
+      expected_fields: []
+      status: "not_run|success|blocked|failed"
+      blocker: ""
+    failure_policy:
+      auth_failed: "block_node|stop_diagnosis|mark_unknown"
+      timeout: "mark_unknown|retry_once|block_node"
+      empty_data: "mark_unknown|treat_as_normal|block_node"
+      missing_fields: "block_node|mark_unknown"
+
+optional:
+  - dependency_id: ""
+    platform: ""
+    required_by_nodes: []
+    purpose: ""
+    fallback: "skip_optional|mark_unknown|manual_gap"
+
+non_executable_gaps:
+  - dependency_id: ""
+    reason: ""
+    user_visible_report_behavior: "dependency_gap|manual_background|unknown"
+
+forbidden_or_action_gated:
+  - dependency_id: ""
+    platform: ""
+    reason: ""
+    required_gate: ""

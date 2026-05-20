@@ -1,0 +1,30 @@
+report:
+  required_sections:
+    - scene_summary
+    - problem_trend
+    - problem_samples
+    - rpc_interface_health
+    - candidate_services
+    - change_and_resource_correlation
+    - conclusion
+    - unknowns_and_gaps
+    - suggested_next_actions
+
+  evidence_rules:
+    confirmed:
+      description: "Data returned by the exact node dependency and matched the judgment rule."
+    auxiliary:
+      description: "Related context that is not directly linked to the Problem sample or root cause."
+    gap:
+      description: "Dependency unavailable, data empty, or required linking field missing."
+
+  forbidden_claims:
+    - "Do not call generic same-window error logs the Problem root cause when Problem samples are empty."
+    - "Do not say no changes if change API failed."
+    - "Do not say topology is normal if topology query returned no data."
+    - "Do not treat qps growth alone as root cause."
+
+  conclusion_levels:
+    - confirmed_root_cause
+    - likely_suspect
+    - inconclusive_with_gaps

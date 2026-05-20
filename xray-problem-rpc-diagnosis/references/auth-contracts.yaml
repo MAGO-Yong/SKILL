@@ -1,0 +1,20 @@
+auth_contracts:
+  - dependency_id: xray-cli
+    platform: xray
+    identity_source: "agent user identity or runtime service token"
+    authentication: "xray-cli auth login writes ~/.config/xray/auth.json, or XRAY_TOKEN is provided"
+    permission_check: "xray-cli auth status plus read-only probe"
+    call_authorization: "read alarm, metric, log, topology, and service metadata"
+    secret_runtime: "XRAY_TOKEN or xray-cli auth store"
+    renewal_policy: "refresh before token expiry"
+    failure_policy: "block affected node and report auth gap"
+
+  - dependency_id: xray-change-api
+    platform: xray
+    identity_source: "agent user identity or platform token"
+    authentication: "official XRay API auth accepted by target runtime"
+    permission_check: "read-only event_list probe"
+    call_authorization: "read change events only"
+    secret_runtime: "platform credential or XRay token"
+    renewal_policy: "runtime managed"
+    failure_policy: "report change dependency gap; do not infer no changes"

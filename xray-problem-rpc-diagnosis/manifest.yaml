@@ -1,0 +1,38 @@
+name: xray-problem-rpc-diagnosis
+version: 0.1.0
+category: diagnosis
+platform: xray
+entrypoint:
+  name: diagnose
+  input_schema:
+    alert_id: optional
+    alert_time: required_if_no_alert_id
+    service: required_if_no_alert_id
+    problem_name: optional
+    rule_id: optional
+    alert_title: optional
+    payload: optional
+  output_schema:
+    scene_summary: required
+    executed_path: required
+    key_evidence: required
+    conclusion: required
+    unknowns: required
+    dependency_gaps: required
+    suggested_owners: optional
+dependencies:
+  required:
+    - xray-alarm
+    - xray-metric-query
+    - query_change
+  optional:
+    - xray-logview-analysis
+    - xray-single-trace-analysis
+    - xray-topology
+    - xray-log-query
+loadability:
+  status: draft_ready
+  admission: pending_skill_evaluator
+  notes:
+    - Official metric, alarm, and change interfaces were probed in Codex runtime.
+    - Alert Agent admission remains a placeholder gate.

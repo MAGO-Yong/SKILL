@@ -1,0 +1,1132 @@
+version: 0.1
+purpose: >
+  Registry of official or expected platform Skills/CLI that Alarm Skill Builder
+  can use to auto-match data acquisition and analysis dependencies while
+  incubating a business alert diagnosis Skill.
+
+dependency_status_values:
+  confirmed: "User/platform confirmed this dependency is correct."
+  candidate: "Likely match. Ask user to confirm only the business fit or permission boundary."
+  verified: "Interface was checked with concrete input, but no live data was fetched."
+  configured_for_trial: "Dependency, inputs, expected outputs, judgment, and failure policy are captured; full real-data verification is deferred to trial run."
+  runtime_executable: "Dependency was invoked or read-only verified during trial run and returned usable data for the node judgment."
+  executable: "Deprecated alias for runtime_executable. Do not use in user-facing Builder creation output."
+  blocked: "Dependency exists but cannot be used now because of auth, permission, install, missing input, or runtime error."
+  missing: "Needed capability is not confirmed available. Keep an interface and fallback."
+  forbidden: "Do not use. Unofficial, unsafe, or blocked by platform policy."
+
+global_verification_policy:
+  applies_to: "all capabilities unless explicitly marked verification_supported: false"
+  goal: "during creation, produce a correct verification plan; during trial run, prove the matched capability can fetch data that supports the SOP node judgment"
+  creation_default: "match dependency, parse stable inputs, capture expected fields/judgment/failure policy, and run only cheap preflight when needed"
+  trial_run_default: "run all required real-data verification and judgment checks before claiming runtime executable"
+  required_verification_record_fields:
+    - dependency_id
+    - input_type
+    - verification_status
+    - returned_fields
+    - missing_fields
+    - judgment_test
+    - blocker
+  configured_for_trial_requires:
+    - "dependency and invocation method are known"
+    - "stable inputs and expected outputs are recorded"
+    - "judgment and failure policy are recorded"
+    - "trial-run verification task is recorded"
+  runtime_executable_requires:
+    - "dependency was invoked or read-only verified in the target runtime during trial run"
+    - "returned fields are sufficient for the node judgment"
+    - "auth/permission/runtime errors did not block the verification"
+  if_not_executable:
+    - "mark candidate, verified, blocked, missing, or forbidden"
+    - "record the exact blocker or missing field"
+    - "do not claim the generated Skill can execute this node end-to-end"
+  judgment_types:
+    - threshold
+    - existence
+    - overlap
+    - diff
+    - concentration
+    - owner_match
+    - checklist
+
+capabilities:
+  - id: xray-alarm
+    type: skill
+    platform: XRay
+    official_status: official
+    safety: read_only
+    use_when:
+      - "需要读取告警 event_id / alert_id 详情"
+      - "需要查询告警规则、规则配置、告警 title、产品线/业务线"
+      - "需要从告警 payload 补齐 metric、服务、owner、触发时间"
+    data_inputs:
+      - alert_id
+      - event_id
+      - rule_id
+      - app
+      - service
+      - product_line
+      - time_range
+    data_outputs:
+      - alert_event_detail
+      - alert_rule_config
+      - trigger_condition
+      - alert_title
+      - product_line
+      - service_owner
+    builder_mapping:
+      node_types: [parse, filter, data_check]
+      default_status: candidate
+      common_nodes:
+        - alert_detail_lookup
+        - alert_rule_or_quality_check
+        - alert_history_lookup
+
+  - id: xray-metric-query
+    type: skill
+    platform: XRay
+    official_status: official
+    safety: read_only
+    use_when:
+      - "需要查询系统指标、业务指标、Cat 指标或 PromQL"
+      - "需要对比同比/环比/上周同期/告警前后趋势"
+      - "需要按场景、版本、实验组、人群、地域拆分指标"
+    data_inputs:
+      - metric_name
+      - promql
+      - service
+      - app
+      - tags
+      - start_time
+      - end_time
+      - baseline_window
+    data_outputs:
+      - time_series
+      - grouped_metric_rows
+      - baseline_comparison
+      - anomaly_points
+    builder_mapping:
+      node_types: [data_check, branch]
+      default_status: candidate
+      common_nodes:
+        - metric_query
+        - metric_group_by_scene
+        - metric_group_by_version
+        - metric_group_by_experiment
+        - metric_group_by_user_segment
+    verification:
+      verification_supported: true
+      accepted_verification_inputs:
+        - metric_name
+        - dashboard_url
+        - promql
+        - service
+        - tags
+        - time_range
+      success_criteria:
+        - "returns current metric value or time series"
+        - "returns baseline or enough data to compute baseline"
+        - "fields can support the node judgment rule"
+      example_judgment:
+        rule: "drop_ratio > 0.05"
+        required_fields: [current_value, baseline_value]
+
+  - id: xray-cli
+    type: cli
+    platform: XRay
+    official_status: official
+    safety: read_only
+    runtime_contract:
+      non_interactive: true
+      prefer_json_output: true
+      auth: "XRAY_TOKEN or xray-cli auth login handled by host"
+    use_when:
+      - "生成的诊断 Skill 需要脚本化、无人值守、结构化 JSON 输出"
+      - "需要在 scripts/atomic 中封装可重复查询"
+      - "需要通过 CLI 统一驱动 XRay 指标、日志或表查询"
+    data_inputs:
+      - command
+      - table
+      - mode
+      - query
+      - start_time
+      - end_time
+    data_outputs:
+      - json_result
+      - stderr
+      - exit_code
+    builder_mapping:
+      node_types: [data_check]
+      default_status: candidate
+      common_nodes:
+        - scripted_metric_query
+        - scripted_log_query
+        - atomic_query_wrapper
+    verification:
+      verification_supported: true
+      accepted_verification_inputs:
+        - command
+        - metric_name
+        - promql
+        - dashboard_url
+        - sql
+        - table
+      success_criteria:
+        - "command exists and supports non-interactive execution"
+        - "returns JSON or parseable output"
+        - "exit_code is 0"
+
+  - id: external-data-adapter
+    type: adapter_pattern
+    platform: generic
+    official_status: adapter_to_be_bound
+    safety: read_only_by_default
+    runtime_contract:
+      non_interactive: true
+      invocation_method: "existing Skill, official CLI, official API, generated script, or manual placeholder"
+      package_hint: "Use generated scripts only for read-only query/post-processing paths unless the user explicitly designs a controlled action."
+    use_when:
+      - "某个排障节点需要其他平台数据、SQL-like 查询、内部 API、报表、文件或自定义脚本"
+      - "当前 registry 没有直接匹配的官方 Skill，但用户提供了稳定 locator/query/API/script"
+      - "节点需要把多次查询、字段归一化、top-N、diff、threshold 或聚合逻辑封装成可复用 runtime"
+    data_inputs:
+      - source_type
+      - locator
+      - query_template
+      - api_endpoint
+      - script_path
+      - auth_context
+      - time_range
+      - filters
+      - dimensions
+      - judgment_rule
+      - required_fields
+    data_outputs:
+      - rows
+      - features
+      - returned_fields
+      - judgment_result
+      - evidence_summary
+      - error_code
+      - raw_locator
+    builder_mapping:
+      node_types: [lookup, data_check, transform, report]
+      default_status: candidate
+      common_nodes:
+        - external_platform_query
+        - generated_script_verification
+        - sql_like_query
+        - api_wrapper_query
+        - dashboard_panel_extraction
+        - manual_data_placeholder
+    verification:
+      verification_supported: true
+      accepted_verification_inputs:
+        - locator
+        - query_template
+        - api_endpoint
+        - script_path
+        - time_range
+        - required_fields
+      success_criteria:
+        - "adapter can be invoked in the current runtime or explicitly marked manual"
+        - "output is JSON or otherwise parseable"
+        - "returned fields contain the fields required by the node judgment"
+        - "judgment rule can be evaluated or read-only verified"
+      example_judgment:
+        rule: "current_drop_ratio > 0.05"
+        required_fields: [current_value, baseline_value]
+
+  - id: xray-log-query
+    type: skill
+    platform: XRay
+    official_status: official
+    safety: read_only
+    use_when:
+      - "需要查询应用日志、业务日志、Flink、Larc、K8s 事件、审计或网关日志"
+      - "需要按 traceId、关键词、错误码、用户 id、版本号检索日志"
+      - "需要验证埋点上报、点击事件、客户端错误或服务异常"
+    data_inputs:
+      - service
+      - log_type
+      - keyword
+      - trace_id
+      - user_id
+      - start_time
+      - end_time
+    data_outputs:
+      - log_rows
+      - error_samples
+      - count_by_keyword
+      - extracted_fields
+    builder_mapping:
+      node_types: [data_check]
+      default_status: candidate
+      common_nodes:
+        - log_error_check
+        - tracking_event_check
+        - keyword_evidence_check
+
+  - id: xray-trace-search
+    type: skill
+    platform: XRay
+    official_status: official
+    safety: read_only
+    use_when:
+      - "需要批量搜索异常 trace 或慢 trace"
+      - "需要按服务、接口、ERROR/SLOW 模式聚合调用链"
+    data_inputs:
+      - service
+      - endpoint
+      - trace_mode
+      - start_time
+      - end_time
+    data_outputs:
+      - trace_list
+      - slow_trace_samples
+      - error_span_groups
+    builder_mapping:
+      node_types: [data_check]
+      default_status: candidate
+      common_nodes:
+        - slow_trace_search
+        - error_trace_search
+
+  - id: xray-single-trace-analysis
+    type: skill
+    platform: XRay
+    official_status: official
+    safety: read_only
+    use_when:
+      - "需要根据 TraceId 深度分析单条链路根因"
+      - "需要定位异常 Span、慢 Span、下游依赖异常"
+    data_inputs:
+      - trace_id
+    data_outputs:
+      - root_cause_hypothesis
+      - abnormal_spans
+      - slow_spans
+      - downstream_health
+    builder_mapping:
+      node_types: [data_check]
+      default_status: candidate
+      common_nodes:
+        - single_trace_rca
+
+  - id: xray-logview-analysis
+    type: skill
+    platform: XRay
+    official_status: official
+    safety: read_only
+    use_when:
+      - "需要根据 CAT MessageId 分析调用链树"
+      - "需要输出耗时 TopN、异常节点、下游依赖健康状态"
+    data_inputs:
+      - message_id
+    data_outputs:
+      - call_tree
+      - latency_topn
+      - abnormal_nodes
+      - dependency_health
+    builder_mapping:
+      node_types: [data_check]
+      default_status: candidate
+      common_nodes:
+        - cat_call_tree_analysis
+
+  - id: xray-ai-trace-analysis
+    type: skill
+    platform: XRay
+    official_status: official
+    safety: read_only
+    use_when:
+      - "需要分析 Langfuse / AI Agent 调用链"
+      - "需要对比单 trace、双 trace 或 session 多 trace"
+      - "需要分析 Token 成本、模型耗时、Agent 步骤异常"
+    data_inputs:
+      - trace_id
+      - session_id
+      - trace_pair
+    data_outputs:
+      - ai_call_graph
+      - model_latency
+      - token_cost
+      - abnormal_steps
+    builder_mapping:
+      node_types: [data_check]
+      default_status: candidate
+      common_nodes:
+        - ai_trace_analysis
+        - agent_session_analysis
+
+  - id: xray-topology
+    type: skill
+    platform: XRay
+    official_status: official
+    safety: read_only
+    use_when:
+      - "需要查询服务拓扑、HTTP 入口拓扑或 CAT 拓扑"
+      - "需要判断上游打爆、下游超时、依赖健康状态"
+    data_inputs:
+      - service
+      - endpoint
+      - topology_mode
+      - start_time
+      - end_time
+    data_outputs:
+      - upstream_services
+      - downstream_services
+      - qps
+      - success_rate
+      - latency
+    builder_mapping:
+      node_types: [data_check, branch]
+      default_status: candidate
+      common_nodes:
+        - topology_dependency_check
+        - upstream_downstream_health
+
+  - id: ones-assistant
+    type: skill
+    platform: ONES
+    official_status: official
+    safety: mixed
+    runtime_boundary: "Generated diagnosis Skills should use read-only ONES queries unless the user explicitly designs a controlled action path."
+    use_when:
+      - "需要查询应用/服务、部署组、镜像版本、发布历史、发布进度、发布详情"
+      - "需要查询 Pod 状态、Pod 日志、服务健康、扩缩容状态"
+      - "需要诊断发布卡住或发布异常"
+    data_inputs:
+      - app
+      - service
+      - deploy_group
+      - env
+      - region
+      - time_range
+      - ones_release_url
+    data_outputs:
+      - release_history
+      - release_detail
+      - image_version
+      - pod_status
+      - deploy_progress
+      - pod_logs
+    builder_mapping:
+      node_types: [data_check]
+      default_status: candidate
+      common_nodes:
+        - release_change_check
+        - pod_status_check
+        - deployment_health_check
+
+  - id: darwin-autobots-cli
+    type: skill_or_cli
+    platform: Darwin
+    official_status: official_doc_listed
+    safety: read_only
+    install_source:
+      - "https://skills.devops.xiaohongshu.com/hub/search?q=autobots+cli&skill=autobots-nav"
+    use_when:
+      - "需要查询 Darwin / Autobots 索引、构建、队列、迁移、服务等查询类全集能力"
+      - "用户描述为查索引、查构建任务、查索引迁移进度、查队列、查 Darwin 服务信息，但未指定更细 Skill"
+      - "需要先用 Darwin 通用入口发现具体 index/build/queue/service locator"
+    data_inputs:
+      - user_query
+      - index_name
+      - build_id
+      - queue_name
+      - service
+      - cluster
+      - time_range
+    data_outputs:
+      - index_info
+      - build_status
+      - queue_status
+      - service_info
+      - matched_locator
+      - raw_result
+    builder_mapping:
+      node_types: [lookup, data_check]
+      default_status: candidate
+      common_nodes:
+        - darwin_general_lookup
+        - autobots_locator_discovery
+    verification:
+      verification_supported: true
+      accepted_verification_inputs:
+        - user_query
+        - index_name
+        - build_id
+        - queue_name
+        - service
+      success_criteria:
+        - "returns parseable Darwin/Autobots query result"
+        - "result includes fields required by the SOP node judgment"
+
+  - id: darwin-index-query
+    type: skill
+    platform: Darwin
+    official_status: official_doc_listed_limited_scope
+    safety: read_only
+    install_source:
+      - "https://docs.xiaohongshu.com/doc/020e53577ce8438d30347e86cc386f65"
+      - "darwin-index-query.skill from Darwin Skill collection doc"
+    use_when:
+      - "需要查询索引列表、索引详情、索引迁移进度、K8s 迁移状态或索引高阶筛选"
+      - "排障节点要判断某个索引是否存在、版本是否正确、迁移是否完成、状态是否异常"
+    data_inputs:
+      - index_name
+      - table_name
+      - cluster
+      - env
+      - migration_id
+      - filters
+      - time_range
+    data_outputs:
+      - index_list
+      - index_detail
+      - index_status
+      - migration_status
+      - owner
+      - config_summary
+    builder_mapping:
+      node_types: [lookup, data_check, branch]
+      default_status: candidate
+      common_nodes:
+        - index_status_check
+        - index_migration_progress_check
+        - index_config_lookup
+
+  - id: darwin-index-debug
+    type: docs_or_skill_family
+    platform: Darwin
+    official_status: official_doc_listed
+    safety: read_only
+    install_source:
+      - "LDS: https://docs.xiaohongshu.com/doc/2c28e27a91c5624d31af6d65a0867235"
+      - "OMEGA: https://docs.xiaohongshu.com/doc/af76fd008cfdac598378d0d4323bfb61"
+      - "LRE: https://docs.xiaohongshu.com/doc/f340140983f08375ece8d244781cdc5e"
+    use_when:
+      - "需要按 LDS / OMEGA / LRE 等 Darwin 索引类型做专项 debug"
+      - "用户说索引 debug、LDS、OMEGA、LRE、索引链路异常"
+    data_inputs:
+      - index_type
+      - index_name
+      - cluster
+      - build_id
+      - time_range
+    data_outputs:
+      - debug_steps
+      - index_health
+      - suspected_component
+      - evidence_summary
+    builder_mapping:
+      node_types: [lookup, data_check]
+      default_status: candidate
+      common_nodes:
+        - lds_index_debug
+        - omega_index_debug
+        - lre_index_debug
+
+  - id: k8s-diagnosis
+    type: skill
+    platform: Darwin
+    official_status: official_doc_listed
+    safety: read_only
+    install_source:
+      - "https://skills.devops.xiaohongshu.com/hub/search?q=k8s%E7%B4%A2%E5%BC%95%E6%9E%84%E5%BB%BA%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E8%AF%8A%E6%96%AD&skill=k8s-diagnosis"
+    use_when:
+      - "需要诊断 K8s 索引构建失败"
+      - "需要定位构建 Pod 失败、任务失败、资源/依赖导致的 Darwin 构建问题"
+    data_inputs:
+      - index_name
+      - build_id
+      - pod_name
+      - queue_name
+      - time_range
+    data_outputs:
+      - diagnosis_result
+      - failed_stage
+      - pod_status
+      - error_summary
+      - suggested_action
+    builder_mapping:
+      node_types: [data_check, branch, report]
+      default_status: candidate
+      common_nodes:
+        - k8s_index_build_failure_check
+
+  - id: index-switch-check
+    type: skill_or_cli
+    platform: Darwin
+    official_status: official_doc_listed
+    safety: read_only
+    install_source:
+      - "https://codewiz.devops.xiaohongshu.com/hub/index-switch-check"
+    use_when:
+      - "需要判断索引是否完成切换、是否未切到新索引、切换状态是否异常"
+      - "排障路径中上游节点输出 index_name/name 后，需要检查索引切换状态"
+    data_inputs:
+      - index_name
+      - name
+      - table_name
+      - cluster
+      - env
+      - time_range
+    data_outputs:
+      - switch_status
+      - current_index
+      - target_index
+      - switch_time
+      - reason
+      - error_summary
+    builder_mapping:
+      node_types: [data_check, branch]
+      default_status: candidate
+      common_nodes:
+        - index_switch_status_check
+    verification:
+      verification_supported: true
+      accepted_verification_inputs:
+        - index_name
+        - name
+        - table_name
+      success_criteria:
+        - "returns switch_status and enough fields to evaluate the node judgment"
+        - "does not require mutation"
+
+  - id: autobots-queue-report
+    type: skill
+    platform: Darwin
+    official_status: official_doc_listed
+    safety: read_only
+    install_source:
+      - "https://skills.devops.xiaohongshu.com/hub/all?skill=autobots-queue-report"
+    use_when:
+      - "需要查询索引构建队列运行情况"
+      - "需要判断队列堆积、任务执行失败、构建耗时或吞吐异常"
+    data_inputs:
+      - queue_name
+      - time_range
+      - index_name
+    data_outputs:
+      - queue_status
+      - task_count
+      - failed_tasks
+      - running_tasks
+      - latency
+      - bottleneck_summary
+    builder_mapping:
+      node_types: [data_check, branch]
+      default_status: candidate
+      common_nodes:
+        - index_build_queue_check
+
+  - id: index-migration-check
+    type: skill
+    platform: Darwin
+    official_status: official_doc_listed
+    safety: read_only
+    install_source:
+      - "https://skills.devops.xiaohongshu.com/hub/search?q=index-migration-check&skill=index-migration-check"
+    use_when:
+      - "需要做索引迁移 schema 前置检查"
+      - "需要判断迁移前 schema、字段、兼容性、配置是否阻塞"
+    data_inputs:
+      - index_name
+      - source_cluster
+      - target_cluster
+      - schema_name
+      - migration_id
+    data_outputs:
+      - schema_check_result
+      - incompatible_fields
+      - blockers
+      - suggested_fix
+    builder_mapping:
+      node_types: [data_check, gate]
+      default_status: candidate
+      common_nodes:
+        - index_migration_schema_precheck
+
+  - id: autobots-queue-mapper
+    type: skill
+    platform: Darwin
+    official_status: official_doc_listed
+    safety: read_only
+    install_source:
+      - "https://skills.devops.xiaohongshu.com/hub/my-contributions?activeMainTab=reviews&skill=autobots-queue-mapper"
+    use_when:
+      - "需要查询索引所在的构建队列"
+      - "排障节点只有 index_name，需要先映射到 queue_name 再查队列状态"
+    data_inputs:
+      - index_name
+      - table_name
+      - cluster
+    data_outputs:
+      - queue_name
+      - queue_owner
+      - queue_config
+    builder_mapping:
+      node_types: [lookup, transform]
+      default_status: candidate
+      common_nodes:
+        - index_to_queue_mapping
+
+  - id: autobots-build-troubleshooting
+    type: skill
+    platform: Darwin
+    official_status: official_doc_listed
+    safety: read_only
+    install_source:
+      - "https://skills.devops.xiaohongshu.com/hub/search?q=Darwin%E7%B4%A2%E5%BC%95%E6%9E%84%E5%BB%BA%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5&skill=autobots-build-troubleshooting"
+      - "darwin-knowledge.skill / xray-metrics-query.skill / autobots-database.skill / autobots-build-troubleshooting.skill from Darwin Skill collection doc"
+    use_when:
+      - "需要排查 Darwin 索引构建失败"
+      - "需要组合知识库、XRay 日志/指标、Autobots 数据库信息给出构建失败原因"
+      - "用户提供构建失败告警、build_id、index_name、queue_name 或错误截图"
+    data_inputs:
+      - build_id
+      - index_name
+      - queue_name
+      - error_message
+      - time_range
+    data_outputs:
+      - root_cause
+      - failed_stage
+      - log_evidence
+      - metric_evidence
+      - db_evidence
+      - suggested_action
+    builder_mapping:
+      node_types: [data_check, branch, report]
+      default_status: candidate
+      common_nodes:
+        - darwin_build_failure_rca
+    auth_contract:
+      requires:
+        - "database permission when using Autobots database evidence"
+        - "XRay log/metric read permission for linked evidence"
+
+  - id: darwin-service-query
+    type: skill_or_doc
+    platform: Darwin
+    official_status: official_doc_listed
+    safety: read_only
+    install_source:
+      - "https://docs.xiaohongshu.com/doc/0a764e558c9c86c46105d3c51a897173"
+    use_when:
+      - "需要查询 Darwin 服务信息、服务状态、服务归属或服务关联资源"
+      - "排障节点涉及 Darwin 服务而非通用 ONES/XRay 服务"
+    data_inputs:
+      - service
+      - app
+      - env
+      - cluster
+    data_outputs:
+      - service_info
+      - owners
+      - deploy_groups
+      - resource_summary
+    builder_mapping:
+      node_types: [lookup, data_check]
+      default_status: candidate
+      common_nodes:
+        - darwin_service_lookup
+
+  - id: deploy-group-diagnosis
+    type: skill
+    platform: Darwin
+    official_status: official_doc_listed
+    safety: read_only
+    install_source:
+      - "https://codewiz.devops.xiaohongshu.com/hub/deploy-group-diagnosis"
+    use_when:
+      - "需要诊断 Darwin 部署组状态、部署组健康、资源或实例异常"
+    data_inputs:
+      - service
+      - deploy_group
+      - env
+      - time_range
+    data_outputs:
+      - deploy_group_status
+      - unhealthy_instances
+      - resource_issue
+      - diagnosis_result
+    builder_mapping:
+      node_types: [data_check, branch]
+      default_status: candidate
+      common_nodes:
+        - darwin_deploy_group_health_check
+
+  - id: darwin-restart-pod
+    type: skill
+    platform: Darwin
+    official_status: official_doc_listed
+    safety: action_risky
+    install_source:
+      - "https://codewiz.devops.xiaohongshu.com/hub/darwin-restart-pod"
+    use_when:
+      - "用户明确要把重启单个 Pod 设计成受控动作"
+      - "排障 Skill 只需要给出重启建议时，不应自动执行"
+    data_inputs:
+      - pod_name
+      - service
+      - deploy_group
+      - env
+    data_outputs:
+      - restart_result
+      - operation_id
+      - risk_summary
+    builder_mapping:
+      node_types: [report, gate]
+      default_status: forbidden
+      common_nodes:
+        - controlled_pod_restart_action
+    runtime_boundary: "Diagnosis Skills must not execute this automatically unless the user explicitly designs an approved action gate."
+
+  - id: autobots-database
+    type: skill
+    platform: Darwin
+    official_status: official_doc_listed_internal
+    safety: read_only
+    install_source:
+      - "autobots-database.skill from Darwin Skill collection doc"
+    use_when:
+      - "需要查询 Autobots 系统数据库、构建任务表、索引配置表或内部结构化状态"
+      - "Darwin 排障节点需要 SQL-like 数据库证据，而非日志/指标"
+    data_inputs:
+      - query_intent
+      - table_name
+      - index_name
+      - build_id
+      - queue_name
+      - time_range
+      - sql_or_filter
+    data_outputs:
+      - rows
+      - task_status
+      - config_rows
+      - error_code
+      - evidence_summary
+    builder_mapping:
+      node_types: [lookup, data_check, transform]
+      default_status: candidate
+      common_nodes:
+        - autobots_db_query
+        - build_task_table_check
+        - index_config_table_check
+    auth_contract:
+      requires:
+        - "database read permission"
+        - "query scope permission"
+
+  - id: darwin-agent-call
+    type: skill
+    platform: Darwin
+    official_status: official_doc_listed
+    safety: read_only_by_default
+    install_source:
+      - "https://skills.devops.xiaohongshu.com/hub/all?skill=darwin-agent-call"
+    use_when:
+      - "需要把自然语言 Darwin 查询委托给 darwin-agent"
+      - "当前没有更细粒度 Skill 可直接匹配，但 Darwin agent 可以返回结构化或半结构化结果"
+    data_inputs:
+      - user_query
+      - context
+      - time_range
+    data_outputs:
+      - agent_answer
+      - evidence
+      - suggested_next_query
+    builder_mapping:
+      node_types: [lookup, data_check]
+      default_status: candidate
+      common_nodes:
+        - darwin_agent_delegated_query
+    verification:
+      verification_supported: true
+      accepted_verification_inputs:
+        - user_query
+      success_criteria:
+        - "returns answer with evidence sufficient for the node judgment"
+        - "does not perform mutation"
+
+  - id: query_change
+    type: skill
+    platform: RCM
+    official_status: official_or_expected
+    safety: read_only
+    use_when:
+      - "需要查询变更事件、配置变更、策略变更、变更人"
+      - "需要查询封网、变更冻结、变更合规率"
+      - "需要确认告警时间窗口附近是否有强相关变更"
+    data_inputs:
+      - service
+      - app
+      - owner
+      - change_system
+      - start_time
+      - end_time
+    data_outputs:
+      - change_events
+      - change_owner
+      - change_type
+      - compliance_status
+      - freeze_window
+    builder_mapping:
+      node_types: [data_check, filter]
+      default_status: candidate
+      common_nodes:
+        - change_event_check
+        - freeze_window_check
+        - compliance_check
+
+  - id: honghu-capacity-query
+    type: skill
+    platform: Honghu
+    official_status: official_or_expected
+    safety: read_only
+    use_when:
+      - "需要查询服务实时容量水位、容量趋势、极限 QPS、压测水位"
+      - "需要判断是否容量不足、buffer 不足、压测结果异常"
+    data_inputs:
+      - service
+      - app
+      - region
+      - start_time
+      - end_time
+    data_outputs:
+      - capacity_waterline
+      - capacity_trend
+      - limit_qps
+      - pressure_test_result
+      - buffer_remaining
+    builder_mapping:
+      node_types: [data_check, branch]
+      default_status: candidate
+      common_nodes:
+        - capacity_waterline_check
+        - pressure_result_check
+
+  - id: service_capacity_detail
+    type: skill
+    platform: Honghu
+    official_status: official
+    safety: read_only
+    use_when:
+      - "需要查询单个服务容量详情、实时容量水位、容量趋势图、天粒度容量报表"
+      - "需要查看 QPS、CPU、内存、水位百分比、告警阈值"
+    data_inputs:
+      - service
+      - region
+      - start_time
+      - end_time
+    data_outputs:
+      - realtime_capacity_waterline
+      - qps
+      - cpu
+      - memory
+      - capacity_threshold
+      - trend
+    builder_mapping:
+      node_types: [data_check, branch]
+      default_status: candidate
+      common_nodes:
+        - service_capacity_detail_check
+        - capacity_trend_check
+
+  - id: capacity_evaluate
+    type: skill
+    platform: Honghu
+    official_status: official
+    safety: read_only
+    use_when:
+      - "需要查询容量评估详情、算法评估结果、压测评估结果、极限 QPS、buffer"
+      - "需要解释容量水位是怎么评估出来的"
+    data_inputs:
+      - service
+      - region
+      - start_time
+      - end_time
+    data_outputs:
+      - algorithm_capacity_result
+      - pressure_test_capacity_result
+      - limit_qps
+      - buffer_remaining
+    builder_mapping:
+      node_types: [data_check, branch]
+      default_status: candidate
+      common_nodes:
+        - capacity_evaluation_check
+        - pressure_test_result_check
+
+  - id: stability-metadata
+    type: skill
+    platform: HA
+    official_status: official_or_expected
+    safety: read_only
+    use_when:
+      - "需要查询业务线、场景、负责人、核心服务、应急协同信息"
+      - "需要补齐 owner、场景、核心链路元数据"
+    data_inputs:
+      - business_line
+      - scene
+      - service
+      - owner
+    data_outputs:
+      - scene_metadata
+      - owners
+      - core_services
+      - emergency_contacts
+    builder_mapping:
+      node_types: [parse, data_check]
+      default_status: candidate
+      common_nodes:
+        - owner_metadata_lookup
+        - scenario_metadata_lookup
+
+  - id: ha-plan
+    type: skill
+    platform: HA
+    official_status: official_or_expected
+    safety: read_only
+    use_when:
+      - "需要根据故障根因匹配预案、降级方案、风险巡检项"
+      - "需要为诊断报告生成可执行后续动作"
+    data_inputs:
+      - root_cause
+      - service
+      - scene
+      - fault_type
+    data_outputs:
+      - matched_plans
+      - degrade_actions
+      - risk_checks
+    builder_mapping:
+      node_types: [report, data_check]
+      default_status: candidate
+      common_nodes:
+        - plan_match
+        - risk_check_recommendation
+
+  - id: ha-risk
+    type: skill
+    platform: HA
+    official_status: official
+    safety: read_only
+    use_when:
+      - "需要查询风险规则检查结果、已启用风险规则、巡检项列表"
+      - "需要为诊断报告补充风险治理和巡检建议"
+    data_inputs:
+      - business_line
+      - scene
+      - service
+      - time_range
+    data_outputs:
+      - risk_rule_results
+      - enabled_rules
+      - patrol_items
+    builder_mapping:
+      node_types: [data_check, report]
+      default_status: candidate
+      common_nodes:
+        - risk_rule_check
+        - patrol_item_lookup
+
+  - id: rca-case-query
+    type: skill
+    platform: RCA
+    official_status: official_or_expected
+    safety: read_only
+    use_when:
+      - "需要检索历史故障 case、同类故障、复盘结论"
+      - "需要为 Skill 试运行或诊断建议提供案例证据"
+    data_inputs:
+      - title_keyword
+      - business_line
+      - scene
+      - fault_level
+      - time_range
+    data_outputs:
+      - rca_cases
+      - known_causes
+      - prior_actions
+      - mttr
+    builder_mapping:
+      node_types: [data_check, report]
+      default_status: candidate
+      common_nodes:
+        - historical_case_search
+
+  - id: experiment-platform-query
+    type: skill_or_api
+    platform: Experiment
+    official_status: missing_or_unconfirmed
+    safety: read_only
+    use_when:
+      - "需要查询实验配置、灰度比例、实验组/对照组、实验 owner、生效时间"
+      - "需要判断是否只有某个实验组指标异常"
+    data_inputs:
+      - experiment_id
+      - bucket_id
+      - app
+      - scene
+      - start_time
+      - end_time
+    data_outputs:
+      - experiment_config
+      - bucket_ratio
+      - owner
+      - effective_time
+    builder_mapping:
+      node_types: [data_check, branch]
+      default_status: missing
+      common_nodes:
+        - experiment_config_check
+        - experiment_metric_breakdown
+
+  - id: business-data-query
+    type: skill_or_api
+    platform: DataHub/RedBI/DataVerse
+    official_status: missing_or_unconfirmed
+    safety: read_only
+    use_when:
+      - "需要查询经营、交易、转化、成功率、效率等业务域指标，但这些指标不在 XRay metric 中"
+      - "需要从业务数仓、BI 大盘、DataHub、DataVerse、RedBI 或类似平台读取聚合指标"
+      - "需要验证业务指标是真实变化还是统计/口径/归因链路问题"
+    data_inputs:
+      - dashboard_url
+      - metric_name
+      - business_domain
+      - dimensions
+      - start_time
+      - end_time
+      - baseline_window
+    data_outputs:
+      - current_value
+      - baseline_value
+      - grouped_rows
+      - dimension_breakdown
+      - metric_definition
+      - owner
+    builder_mapping:
+      node_types: [data_check, branch]
+      default_status: missing
+      common_nodes:
+        - gmv_check
+        - order_count_check
+        - payment_success_rate_check
+        - conversion_rate_check
+        - roi_check
+    verification:
+      verification_supported: false
+      reason: "No confirmed official Skill/CLI in registry yet. Keep interface and fallback until introduced."
+      accepted_verification_inputs:
+        - dashboard_url
+        - metric_name
+        - business_domain
+      success_criteria:
+        - "official data platform capability exists"
+        - "returns metric values and dimensions needed by the node judgment"

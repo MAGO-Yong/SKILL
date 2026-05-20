@@ -1,0 +1,4 @@
+interface:
+  display_name: "Xray Frontend Dev"
+  short_description: "项目专用前端开发流程与约束，覆盖环境检查、需求确认、技术方案、编码与验证。"
+  default_prompt: "使用这个 skill 在 xray 项目中完成前端开发任务，先检查本地环境，再产出需求文档和技术方案并等待明确确认，随后以最小改动完成实现、校验 lint/ts、启动本地环境并给出访问链接。"

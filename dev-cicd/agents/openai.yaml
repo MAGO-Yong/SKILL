@@ -1,0 +1,3 @@
+display_name: 开发发布 CICD
+short_description: 代码检查、镜像构建推送、ONES 发布和新服务创建流程。
+default_prompt: 帮我按开发发布流程检查、构建并发布当前项目。

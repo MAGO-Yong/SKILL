@@ -1,0 +1,38 @@
+dependency_bootstrap:
+  required:
+    - dependency_id: xray-alarm
+      required_by_nodes: [alert_context]
+      install_source: "Codex SkillHub or built-in XRay CLI"
+      invocation_method: skill_or_cli
+      preflight:
+        command_or_probe: "xray-cli auth status && xray-cli --output-format json alarm event get <known_event_id>"
+        expected_fields: [basic, alarm_details]
+      fallback: "block diagnosis if alert context cannot be resolved"
+
+    - dependency_id: xray-metric-query
+      required_by_nodes: [problem_trend, problem_samples, rpc_interface_health, change_and_resource_check]
+      install_source: "Codex SkillHub"
+      invocation_method: skill_or_official_metric_api
+      preflight:
+        command_or_probe: "read-only Cat Problem and system metric sample query"
+        expected_fields: [success, data]
+      fallback: "report metric dependency gap"
+
+    - dependency_id: query_change
+      required_by_nodes: [change_and_resource_check]
+      install_source: "Codex SkillHub or official XRay change API"
+      invocation_method: skill_or_api
+      preflight:
+        command_or_probe: "read-only change query for candidate service"
+        expected_fields: [code, result]
+      fallback: "report change dependency gap"
+
+  optional:
+    - dependency_id: xray-topology
+      fallback: "route candidate services from RPC interface names"
+    - dependency_id: xray-logview-analysis
+      fallback: "report messageId analysis skipped"
+    - dependency_id: xray-single-trace-analysis
+      fallback: "report trace analysis skipped"
+    - dependency_id: xray-log-query
+      fallback: "skip auxiliary logs"

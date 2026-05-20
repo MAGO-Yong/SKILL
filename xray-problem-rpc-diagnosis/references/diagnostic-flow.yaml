@@ -1,0 +1,80 @@
+nodes:
+  - id: alert_context
+    title: Read alert context
+    evidence: xray_alarm_event_detail
+    next: problem_trend
+
+  - id: problem_trend
+    title: Query Problem trend
+    evidence: cat_problem_count
+    query:
+      mode: cat
+      theme: problem
+      metric: count
+      type: error
+      names: "<problem_name>"
+      step: 60
+    judgment:
+      positive: "alert window count visibly increases relative to surrounding baseline"
+      negative: "no visible increase or no data"
+    next:
+      positive: problem_samples
+      negative: report_problem_evidence_insufficient
+
+  - id: problem_samples
+    title: Drill into Problem samples
+    evidence: cat_problem_samples
+    judgment:
+      positive: "samples include messageId, traceId, or exception evidence"
+      negative: "samples empty or missing required linkage"
+    next:
+      positive: exception_analysis
+      negative: problem_samples_missing
+
+  - id: exception_analysis
+    title: Analyze concrete exception point
+    evidence: message_or_trace_analysis
+    next: rpc_interface_health
+
+  - id: problem_samples_missing
+    title: Mark samples missing without substituting generic logs
+    evidence: empty_samples_result
+    next: rpc_interface_health
+
+  - id: rpc_interface_health
+    title: Check RPC health by interface
+    evidence: cat_transaction_call_by_name
+    query:
+      mode: cat
+      theme: transaction
+      type: Call
+      metrics: [qps, failPercent, avg, tp99]
+      group_bys: [name]
+      step: 60
+    judgment:
+      abnormal: "interface has failPercent increase, avg/tp99 increase, or meaningful qps shift around alert window"
+    next: suspicious_service_routing
+
+  - id: suspicious_service_routing
+    title: Route suspicious downstream services from interface names
+    rule: "service prefix before method name, e.g. prokos-service-toc.getFoo -> prokos-service-toc"
+    next: change_and_resource_check
+
+  - id: change_and_resource_check
+    title: Query changes, CPU, and memory for candidate services
+    evidence:
+      - change_events
+      - cpu_usage
+      - mem_usage
+    next: report
+
+  - id: report
+    title: Structured diagnosis report
+
+stop_conditions:
+  - "required alert context cannot be derived"
+  - "required metric dependency unavailable"
+non_stop_conditions:
+  - "Problem samples missing"
+  - "SERVICE topology unavailable"
+  - "change list empty"

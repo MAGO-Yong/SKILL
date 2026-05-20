@@ -1,0 +1,9 @@
+interface:
+  display_name: "告警 Skill Builder"
+  short_description: "通过对话孵化告警排障 Skill，按目标运行环境预检依赖，不把缺失平台能力降级成假执行。"
+  default_prompt: "我要创建一个业务告警排障 Skill，请引导我把 SOP、平台依赖、依赖预检、试运行材料和告警 Agent 加载契约沉淀出来。"
+runtime:
+  target_agent: cc
+  requires_dependency_bootstrap: true
+  no_capability_downgrade: true
+

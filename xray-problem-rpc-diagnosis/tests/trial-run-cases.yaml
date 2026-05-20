@@ -1,0 +1,28 @@
+cases:
+  - id: deimos_194524847
+    source_event: "https://xray.devops.xiaohongshu.com/reddog/event/detail/194524847"
+    alert_id: 194524847
+    service: deimos-service-toc
+    problem_name: java.lang.NullPointerException
+    alert_time: "2026-05-20 19:46:08"
+    expected_path:
+      - alert_context
+      - problem_trend
+      - problem_samples
+      - problem_samples_missing
+      - rpc_interface_health
+      - suspicious_service_routing
+      - change_and_resource_check
+      - report
+    expected_evidence:
+      problem_trend: "Cat Problem count returns non-empty time series for java.lang.NullPointerException."
+      problem_samples: "Cat samples returned empty for 2026-05-20 19:45:00 to 19:47:00."
+      rpc_interface_health: "Cat transaction Call by name returns interfaces including prokos-service-toc.getKosRelationByAuxiliaryStrictly."
+      candidate_service: "prokos-service-toc derived from RPC interface prefix."
+      resources: "CPU/memory queries return data for deimos-service-toc and prokos-service-toc."
+      changes: "Change API query succeeded with zero events in the probed window."
+    expected_unknowns:
+      - "Problem sample drilldown missing, so exact NPE code point is not proven."
+      - "SERVICE topology unavailable due middleware version; CAT fallback has no upstream/downstream."
+    must_not_claim:
+      - "RequestTimeoutException logs are the root cause of the NullPointerException Problem alert."

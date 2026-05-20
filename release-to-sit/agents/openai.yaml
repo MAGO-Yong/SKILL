@@ -1,0 +1,3 @@
+display_name: 发布到 SIT
+short_description: 端到端完成验证、构建、推送、ONES 发布和 SIT 冒烟验证。
+default_prompt: 按标准流程把当前改动验证、构建并发布到 SIT，过程中维护状态表，缺少工具链时主动补齐，只有目标或权限不明确时再问我。

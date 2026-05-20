@@ -1,0 +1,46 @@
+required:
+  - id: xray-alarm
+    purpose: Read alert event detail and links.
+    invocation: "xray-cli --output-format json alarm event get <alert_id> --show-link"
+    auth: "xray-cli auth status must be logged in, or runtime provides XRay token."
+    probed: true
+    probe_evidence: "event 194524847 returned P1 Problem alert for deimos/deimos-service-toc."
+    failure_policy: "Stop if no service and alert time can be derived."
+
+  - id: xray-metric-query
+    purpose: Query Problem, RPC, CPU, and memory metrics.
+    invocation: "python scripts/query.py via platform Skill, or equivalent official metric API."
+    auth: "XRay metric read permission."
+    probed: true
+    probe_evidence:
+      - "Cat Problem count query returned java.lang.NullPointerException count series."
+      - "Cat transaction Call query returned interface-level qps/failPercent/avg/tp99."
+      - "System CPU/memory query returned deimos-service-toc and prokos-service-toc series."
+    failure_policy: "Report metric dependency gap and stop affected node."
+
+  - id: query_change
+    purpose: Query ONES/Apollo changes for alert and candidate services.
+    invocation: "POST https://xray.devops.xiaohongshu.com/api/change/event_list"
+    auth: "XRay change API read permission; current probe used xray_ticket pass."
+    probed: true
+    probe_evidence: "Change query for deimos-service-toc and prokos-service-toc over alert_time-2h to alert_time returned success with zero events."
+    failure_policy: "Report change dependency gap; do not infer no change."
+
+optional:
+  - id: xray-logview-analysis
+    purpose: Analyze CAT messageId when Problem samples provide messageId.
+    failure_policy: "If unavailable, report samples exist but link analysis was not executed."
+
+  - id: xray-single-trace-analysis
+    purpose: Analyze traceId when Problem samples provide xray trace id.
+    failure_policy: "If unavailable, report samples exist but trace analysis was not executed."
+
+  - id: xray-topology
+    purpose: Enrich upstream/downstream topology.
+    probed: true
+    probe_evidence: "SERVICE topology returned no data due middleware version; CAT fallback returned zero upstream/downstream for deimos-service-toc."
+    failure_policy: "Use RPC interface names for candidate service routing and report topology gap."
+
+  - id: xray-log-query
+    purpose: Auxiliary context only when samples are missing.
+    failure_policy: "Never use generic same-window logs as replacement root cause."
