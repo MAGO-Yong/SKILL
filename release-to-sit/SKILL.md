@@ -32,19 +32,11 @@ Use this skill when the user says:
 - `我开发完了，帮我验证并发布`
 - equivalent requests involving validation, build, branch push, ONES, service deploy, or SIT smoke test
 
-Also activate this skill locally as a coding preflight whenever Codex is about
-to write code in a repository that may later need SIT or production delivery.
-In coding-preflight mode, run only the early non-deploy steps:
-
-- identify repo, branch, remote, and target environment assumptions;
-- detect duplicate/stale feature branches for the same task;
-- confirm the canonical branch strategy before edits;
-- inspect current diff scope and unrelated local changes;
-- note expected validation/build/release path for later.
-
-Coding-preflight mode must not build, push, create CR/MR, deploy, or ask for
-production approval. It exists to keep branch, diff, and release assumptions
-clean from the first code edit.
+Do not activate this skill for ordinary coding, UI tweaks, or bug fixes unless
+the user also asks for validation, build, push, deploy, SIT, production
+readiness, or release handoff. Normal development should use the relevant
+project skill, such as `xray-frontend-dev`, and stay in lightweight local
+validation mode.
 
 When the user says `发布生产`, `发 prod`, `上线`, or equivalent production
 language, use this skill only for production readiness checks, version
@@ -108,6 +100,76 @@ Production exception:
   `master` is missing, mark the production step `blocked` and give the user the
   smallest actionable handoff instead of trying to work around it.
 
+## Release Type Routing
+
+Before build, image selection, or deploy, classify the affected service. This
+classification is mandatory; do not infer all services use the same release
+artifact.
+
+| Service Type | Typical Evidence | Primary Artifact | SIT Rule | Production Rule |
+|---|---|---|---|---|
+| Frontend Docker service | ONES service with nginx/container workload, Dockerfile in FE package | Docker image tag | Deploy only a tag returned by ONES image list for that service | Hand off a production-eligible `master` image/version only |
+| FE static platform package | `formula deploy-fe`, CDN/static upload, no service workload image needed | FE Platform app/module version | Upload is not enough; verify test/SIT activation separately | Hand off after CR/MR, master/version gate |
+| Backend service | Java/Go/Python service, Maven/Gradle/Makefile, service image list | Docker image tag | Deploy newest publishable image matching branch/commit | Hand off `master` image after merge/review |
+| Library/package | npm/Maven package publish scripts | Package version | Usually no ONES deploy unless consumed by a service | Require review/versioning; no direct prod deploy |
+
+Guardrails:
+
+- Never use a FE static artifact version as an ONES Docker image tag.
+- Never assume a pushed branch has produced a deployable image. Poll the image
+  list until the exact branch/commit tag appears, or classify the image build as
+  blocked/failed.
+- Never deploy a tag that is only "name-shaped" correctly. It must be present
+  in the target service's image/version list and marked publishable when the
+  platform exposes that field.
+- For full-stack changes, treat frontend and backend as separate services with
+  separate validation, image, deploy, and smoke status. Do not say "released"
+  until every requested service reaches its intended terminal state.
+
+### XRay Frontend Handoff Gate
+
+When the target repo is XRay frontend or the affected package is `x-ray-next`,
+run the frontend-scoped gate from `xray-frontend-dev` before any push, image
+selection, SIT deploy, or production handoff.
+
+Required evidence:
+
+- the canonical branch name has no `/`, because frontend CI may use branch name
+  inside Docker tags;
+- the owning frontend package/module has been identified from the request,
+  route, changed files, or package ownership;
+- `git diff --name-status origin/master..HEAD` contains only that owning
+  module plus intentional release metadata;
+- no platform-level contract changes are included unless they are explicitly
+  requested, separately committed, and validated at broader scope;
+- release metadata is limited to the owning package's `package.json` and
+  `CHANGELOG.md`, unless the package has a different documented release file;
+- Changesets selected only the owning frontend package for a patch release,
+  unless the user explicitly requested a broader version bump;
+- `git diff --check` and the owning package build have passed, for example
+  `pnpm -F x-ray-next run build:test` for the main app, or the exact blocker is
+  reported separately.
+
+Do not start SIT deployment when this gate fails. Fix the branch/diff/version
+first, then continue with image discovery.
+
+### Prevent Known Release Failures
+
+Run these prevention gates before build, image selection, deploy, or production
+handoff. They are not just diagnostic categories. A gate that fails blocks the
+next release step until the input is fixed or explicitly accepted by the user.
+
+| Risk To Prevent | Gate Before Continuing | Block If | How To Fix Before Retry |
+|---|---|---|---|
+| Lockfile/specifier drift | For every changed workspace `package.json`, compare the importer specifiers in `pnpm-lock.yaml`; run the same frozen install mode CI uses when practical | any changed workspace importer differs from lockfile, or frozen install reports `ERR_PNPM_OUTDATED_LOCKFILE` | regenerate lockfile once from repo root with the project's pnpm version; review that only intended workspace metadata changed |
+| Invalid Docker tag from branch name | Check branch name before push/build/deploy; if the platform uses branch in tag, require a Docker-tag-safe branch without `/`, spaces, or unsafe punctuation | branch/tag would produce an invalid Docker reference | create or switch to a canonical safe branch, push that branch, and use its image/build output |
+| Deploying a non-existent image | Query ONES image list for the target service and exact branch/commit/full SHA tag before deploy | exact tag is absent, not publishable, stale, or does not match the pushed commit | wait for CI/image build, fix CI, or select a listed publishable tag that matches the desired commit |
+| FE static artifact used as service image | Classify release type as frontend Docker service vs FE static platform package before artifact selection | only a `formula deploy-fe` upload/version exists but the target is an ONES service workload | build/find the ONES Docker image for the service, or change the target to FE static activation explicitly |
+| ONES workload already occupied | Run `ones-cli deploy workloadgroups check` for target service/workload before creating a changeflow | workload group is deploying, locked, or not under `canDeploy` | diagnose/cancel/release the active changeflow first, then re-check until deployable |
+| CLI permission conflict | Probe ONES auth, service read, image read, and workload check before create; compare with UI precheck when available | read works but create returns owner/permission 403, or UI and CLI disagree | do not switch release path blindly; use UI fallback or produce escalation evidence with command, service, workload, image, and permission result |
+| Production using feature/SIT artifact | For production, verify CR/MR approval, merge to `master`, and master image/version evidence before handoff | candidate version/image is from feature branch, SIT-only, unmerged, or lacks production approval | stop at production gate; complete review/merge/build first, then hand off the master candidate |
+| Mock/debug data in release | Scan changed file names and changed content for mock/demo/sample/fixture/debug/test-data patterns before push/build/deploy | mock payloads, fake ids, local fixtures, debug switches, or sample datasets would ship by default | remove them from the release diff, or gate them behind development-only switches and report why they are safe |
+
 ## Dry Run Mode
 
 If the user asks to simulate, review, rehearse, or "do not really build/trigger",
@@ -152,12 +214,18 @@ XHS DevOps probes:
 - ONES service read: `ones-cli meta services detail --service <service> -o json`
 - ONES image read: `ones-cli meta images list --service <service> -o json`
 - Service SIT deploy target: discover the service's `sit` deploy group from service metadata, deployment history, or platform UI.
+- Active deploy gate:
+  `ones-cli deploy workloadgroups check --service <service> --workload-groups '<json>' --output-format json`
 
 Interpretation rules:
 
 - The user's normal SIT release flow is direct service SIT deployment, not a
   personal test project/lane. Do not ask for a test project just because a CLI
   help page or `project list` mentions project-based deploy.
+- If the user explicitly says "直接走 ones CLI 发布到 SIT 服务" or equivalent,
+  do not run `ones-cli project list`, do not use `ones-cli project deploy`, and
+  do not ask for a project name. Discover the service, image, changeflow, and
+  SIT workload group, then call the direct service release command.
 - `ones-cli project list` returning an empty list is usually irrelevant for the
   service SIT flow. It does not mean ONES is logged out.
 - Do not run or report `npm whoami` by default. Only check npm login when the
@@ -171,6 +239,56 @@ Interpretation rules:
   on an authenticated page.
 - Never request or print raw tokens/passwords. If credentials are required,
   guide the user through the platform login flow, such as device code or SSO.
+
+## ONES Failure Playbook
+
+Use this when a release is stuck, rejected, or behaves differently between CLI
+and the web UI.
+
+### Running / ImagePullBackOff / ErrImagePull
+
+If a changeflow is `Running` but pods show `ErrImagePull` or
+`ImagePullBackOff`:
+
+1. Run `ones-cli deploy diagnose --changeflow <name> -o json`.
+2. Extract the exact image/tag from the pod message.
+3. Verify the tag exists in `ones-cli meta images list --service <service>`.
+4. If the tag does not exist, classify the changeflow as a bad deploy artifact,
+   not an app runtime bug.
+5. Do not create a second deployment while
+   `ones-cli deploy workloadgroups check ...` reports the workload group in
+   `deploying`.
+6. Look for a CLI cancel/rollback command with `ones-cli schema deploy
+   --format json`. If no cancel command exists, open the ONES changeflow page
+   and guide the user to click one of the visible cancel controls such as
+   `取消并暂停当前阶段` or the platform's equivalent stop/cancel action.
+7. After cancellation, re-run workload group check and proceed only when the
+   group is back in `canDeploy`.
+
+If the bad changeflow was caused by Codex choosing the wrong artifact, say that
+plainly and fix the reusable guardrail before continuing.
+
+### CLI Permission Conflict
+
+If `ones-cli` returns a permission block such as `研发owner` but read-only
+checks show the user can read the app/service, the workload group is
+`canDeploy`, and web UI precheck succeeds, classify it as CLI/backend
+authorization conflict. Do not reinterpret it as a missing personal test
+project. Use the authenticated web UI path or provide a concise escalation
+handoff with:
+
+- failing CLI command;
+- service, workload group, image tag;
+- read-only permission evidence;
+- web precheck evidence if available.
+
+### Browser/UI Fallback
+
+Use Chrome UI only for UI-only release actions, cancellation, manual approval,
+or authenticated smoke. Prefer CLI for read-only status and repeatable
+deployment creation. If the page is blank or DevTools automation fails, give
+the user direct manual instructions instead of repeatedly clicking the same
+blank page.
 
 ## Required Status Board
 
@@ -420,6 +538,17 @@ If a repo-level lint command fails because of known existing config incompatibil
 
 Do not let a known repo-wide lint debt mask syntax failures in touched files. Use targeted checks where possible.
 
+When a monorepo CI runs broader packages than the edited package, distinguish:
+
+- **Touched-package gate**: must pass before release.
+- **Repo-level historical debt**: document exact command and existing failure,
+  but do not make unrelated mass formatting/dependency changes just to satisfy
+  a stale lint configuration.
+- **CI-blocking shared gate**: if the broader CI gate truly prevents image
+  generation, fix the smallest CI configuration compatibility issue, then
+  push a new commit and wait for the real image. Do not work around it by
+  manually inventing image tags.
+
 ### 7. Tests
 
 Type: `[Universal]`
@@ -479,9 +608,42 @@ After push:
 
 For personal projects, this may mean GitHub Actions, a Docker image tag, or no CI at all.
 For Xiaohongshu projects, prefer platform metadata over guessing from image names.
-For frontend packages that use a platform publish CLI, inspect package scripts
-such as `formula publish`, `formula build`, or internal pipeline links before
-assuming the backend image flow applies.
+For frontend packages that use a platform publish CLI, inspect package scripts,
+internal pipeline links, and the user's normal release入口 before assuming the
+backend image flow applies. If the team normally releases from ONES/流水线, use
+that as the primary user-facing path and keep lower-level FE Platform details
+inside Codex's execution notes.
+
+Frontend Docker services:
+
+- A successful `formula build` or `formula deploy-fe` does not prove the ONES
+  service image exists.
+- The required evidence for ONES deployment is:
+  `ones-cli meta images list --service <frontend-service> --query <commit>`.
+- If the image list is empty after a push, inspect CI/pipeline status or the
+  repo's CI config. Do not proceed with a constructed tag.
+- If local Docker push is attempted and the registry rejects it, classify it as
+  registry permission/credential blocked. Do not ask the user to accept an
+  unverified tag.
+
+For Xiaohongshu FE static packages that use `formula deploy-fe`, do not present
+it to the user as a new platform they must understand. Treat FE release as two
+internal states:
+
+1. **FE artifact uploaded**: `formula deploy-fe -e test` succeeds and returns
+   an app version/module version in FE Platform.
+2. **SIT/test published**: the FE Platform project has activated that app
+   version for the test/SIT environment.
+
+Report these states only when they affect the release outcome. The normal user
+summary should stay in their familiar terms: branch/commit, pipeline/build
+version, SIT environment, and smoke URL. Do not tell the user "SIT is
+published" after artifact upload alone. When running `formula deploy-fe`
+outside CI as a fallback, set real CI metadata (`CI_COMMIT_SHA`,
+`CI_COMMIT_REF_NAME`, `GITLAB_USER_EMAIL`, `CI_PROJECT_URL`,
+`CI_PIPELINE_URL`) so FE Platform does not create `debug-version-debugId`
+versions. Do not ask the user to reason about these variables; either set them
+from git/repo context or explain the exact blocker.
 
 When a deployable image/version must be chosen, present a small ranked candidate
 table before asking or deploying. The table should make the latest usable option
@@ -523,6 +685,12 @@ find the service's SIT deploy group, select the image/tag, and create or open
 the service SIT release flow. Do not route through personal test projects unless
 the user explicitly asks for a lane/project release.
 
+Exception: FE static-resource packages may be backed by FE Platform even when
+the visible release entry is ONES/流水线. Prefer the visible ONES/流水线 path for
+execution and reporting. Use FE Platform directly only when the pipeline cannot
+be triggered or when diagnosing whether an uploaded frontend version has become
+active in `test`/SIT.
+
 For personal projects, this may instead be a local port, Docker Compose service, cloud app, server path, or static hosting target.
 For X-RAY projects, identify product module, frontend package, backend service, SIT URL, and any required mock/proxy mode.
 
@@ -532,6 +700,18 @@ Type: `[XHS DevOps]`
 
 Use ONES CLI if it has all required parameters.
 If CLI cannot express the current platform flow, use Chrome with the user's logged-in session.
+
+For current ONES CLI service SIT release, prefer the top-level service commands
+instead of nested `deploy` commands:
+
+- `ones-cli changeflow-infos list --service <service> --output-format json`
+- `ones-cli workloadgroups check --service <service> --workload-groups '<json>' --output-format json`
+- `ones-cli create --service <service> --changeflow-info <template> --workload-groups '<json>' --image-tag <tag> -y --output-format json`
+- `ones-cli detail --changeflow <changeflowName> --output-format json`
+
+Do not use `ones-cli deploy create` for direct service SIT release when it
+requires `--project`; that path is the project/lane release flow and will
+confuse users who explicitly asked for direct service SIT deployment.
 
 Record:
 
@@ -543,6 +723,11 @@ Record:
 
 If the user says they will publish manually, stop at branch/build readiness and provide exact branch, commit, image, and validation evidence.
 
+Before creating a new SIT deployment, always check for active deployments on
+the same workload group. If the workload group is already in `deploying`,
+diagnose or cancel/guide-cancel the existing changeflow first. Creating another
+release while the group is occupied usually fails or hides the true issue.
+
 If the installed `ones-cli` only exposes project-style deploy flags such as
 `--project`, do not ask the user for a project by default. Instead treat it as a
 CLI capability mismatch for the desired service SIT flow: inspect service
@@ -550,6 +735,21 @@ metadata and image tags, then use the direct service SIT release command if
 available in a newer CLI, or use the authenticated platform UI. Ask the user
 only if the service, SIT deploy group, image tag, or release target is still
 ambiguous.
+
+If the direct service release command returns an ONES permission error, first
+check whether the permission error conflicts with platform evidence:
+
+- `ones-cli meta applications permissions list --output-format json` shows the
+  target app has `rd` or release-capable permission;
+- `ones-cli workloadgroups check ...` returns the target group in `canDeploy`;
+- `ones-cli history list-by-user --output-format json` shows the same account
+  recently released the same service/environment.
+
+If these pass but `ones-cli create` still returns
+`permission denied: application '<app>' access denied`, report it as an ONES
+CLI/service-release backend authorization conflict, not simply as user missing
+permission. Include the failing command shape and evidence. Do not try to
+bypass it with project/lane publishing.
 
 ### 13P. Production Readiness Gate
 
@@ -628,6 +828,11 @@ Type: `[Universal]`, plus `[XHS DevOps]` for changeflow details.
 
 Poll deployment detail until terminal state.
 On failure, fetch diagnosis/logs, classify cause, and fix/retry when it is code/config/tooling.
+
+Terminal states include at least `Finish`, `Failed`, `Cancel`, and platform
+equivalents. `Cancel` is successful cleanup of a bad deployment but not a
+successful release. After `Cancel`, verify workload availability before
+releasing a corrected image.
 
 For non-XHS projects, monitor the equivalent pipeline, service logs, health endpoint, or hosting dashboard.
 

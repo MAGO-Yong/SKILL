@@ -15,14 +15,22 @@ Applicability:
 
 Type: `[Case]`
 
-- Frontend: `/Users/mahengyang/Documents/New project/xray`
-- Backend: `/Users/mahengyang/Documents/New project/langfuse4j-readonly`
+- Frontend examples seen on this machine:
+  `/Users/mahengyang/Documents/New project 3/xray` and older
+  `/Users/mahengyang/Documents/New project/xray`. Confirm the active cwd before
+  editing, building, or publishing.
+- Backend examples seen on this machine:
+  `/Users/mahengyang/Documents/New project 3/langfuse4j` and older
+  `/Users/mahengyang/Documents/New project/langfuse4j-readonly`. Confirm the
+  active cwd before editing, building, or publishing.
 
 ## Common Branch
 
 Type: `[Case]`
 
-- Preferred feature branch for the current AI evaluation dataset version work:
+- Recent AI evaluation layout/runtime branch:
+  `feat-ai-eval-layout-density`
+- Older dataset hierarchy branch:
   `feat-ai-eval-dataset-hierarchy`
 - Build and publish from the feature branch by default.
 - Do not merge into `master`, `deploy_sit`, or any shared deploy branch unless the user explicitly asks.
@@ -44,6 +52,18 @@ pnpm -F x-ray-next run build:test
 pnpm -F x-ray-next run dev
 ```
 
+Validation caveats:
+
+- In a local path containing spaces such as `New project 3`, `formula lint` may
+  fail because formula-linter internally shells out with an unquoted `cd`. Do
+  not confuse that local path bug with GitLab CI unless the same error appears
+  in CI logs.
+- Current `x-ray-next` lint history includes ESLint 9 / flat-config
+  compatibility debt and large repo-wide formatting debt. For release
+  readiness, prefer `git diff --check`, touched-package build, and CI status.
+  Only change lint config when CI is demonstrably blocked by a config
+  incompatibility; do not mass-format unrelated files.
+
 Publish-related scripts observed in `packages/xray-main/package.json`:
 
 ```bash
@@ -53,9 +73,74 @@ pnpm -F x-ray-next run major
 ```
 
 These wrap `formula publish <level>`. Do not assume backend image release
-commands apply to the frontend package. For frontend release, first inspect the
-Formula output or internal pipeline page, then map the generated version/build
-to SIT release.
+commands apply to the frontend package.
+
+For `x-ray-next`, prefer the user's normal visible path: Git push -> internal
+pipeline/ONES frontend release entry -> SIT/test effect check. The user should
+not need to understand FE Platform or CI metadata in normal operation.
+
+Use `formula deploy-fe -e test` only as a fallback/diagnostic when the standard
+pipeline entry is unavailable or when you must confirm whether a frontend
+version has been uploaded. If running it locally, set CI metadata from git/repo
+context so FE Platform records the real branch and commit:
+
+`CI_COMMIT_SHA=$(git rev-parse HEAD) CI_COMMIT_REF_NAME=<branch>
+GITLAB_USER_EMAIL=<email> CI_PROJECT_URL=<repo-url>
+CI_PIPELINE_URL=<pipeline-url> pnpm -F x-ray-next exec formula deploy-fe -e test`
+
+If this returns `debug-version-debugId`, rerun with real CI metadata before any
+publish. In user-facing updates, say "前端制品已上传/测试环境已生效" only when
+those states matter; otherwise report the familiar branch, commit, pipeline,
+SIT URL, and smoke result.
+
+Important guardrail for `fexray-frontend-default`: `formula deploy-fe -e test`
+uploads the FE static artifact; it is not the ONES Docker image tag. Before
+running `ones-cli deploy create` for this service, always verify the exact tag
+with:
+
+```bash
+ones-cli meta images list --service fexray-frontend-default --query <commit-or-tag> -o json
+```
+
+Only use a tag returned by this image list. If the list is empty, do not create
+an ONES deployment with a FE static version such as
+`<branch>-<shortSha>`; that produces `ErrImagePull` in the frontend CloneSet.
+
+Observed frontend Docker image pattern:
+
+```text
+feat-ai-eval-layout-density-<shortSha>
+```
+
+Example of a valid image observed after CI/image generation:
+
+```text
+feat-ai-eval-layout-density-bf02a75d
+```
+
+Example of the bad release pattern that caused `ImagePullBackOff`:
+
+```text
+Deploying feat-ai-eval-layout-density-96a9b4f8 before it existed in
+ones-cli meta images list --service fexray-frontend-default
+```
+
+If this happens:
+
+1. Diagnose the changeflow and confirm the missing image in pod status.
+2. Open the ONES changeflow page if CLI has no cancel command.
+3. Ask/guide the user to click `取消并暂停当前阶段` or equivalent cancel action.
+4. Verify the group is free:
+
+```bash
+ones-cli deploy workloadgroups check \
+  --service fexray-frontend-default \
+  --workload-groups '["qcsh-sit.fexray-frontend-default"]' \
+  --output-format json
+```
+
+Continue only after `qcsh-sit.fexray-frontend-default` returns under
+`canDeploy`.
 
 Known issue:
 
@@ -163,6 +248,10 @@ Known backend service from the AI evaluation dataset version work:
 
 - `langfuseobs-service4j-diandian`
 
+Known frontend service from the AI evaluation layout work:
+
+- `fexray-frontend-default`
+
 ONES commands to inspect:
 
 ```bash
@@ -188,7 +277,8 @@ commit hash instead of blindly selecting an older latest image.
 The user's normal SIT flow is direct service SIT release, not personal test
 project/lane release. For this case, target the service's SIT deploy group:
 
-- `qcsh-sit.langfuseobs-service4j-diandian`
+- backend: `qcsh-sit.langfuseobs-service4j-diandian`
+- frontend: `qcsh-sit.fexray-frontend-default`
 
 `ones-cli project list -o json` may return an empty list for the user. Treat it
 as irrelevant to direct service SIT release unless the user explicitly asks for
@@ -202,11 +292,63 @@ a personal lane/project. Continue by checking:
 
 Current CLI shape:
 
+- Direct service SIT release for the XRay frontend service uses the top-level
+  service release commands, not project/lane deploy:
+
+```bash
+ones-cli meta services detail --service fexray-frontend-default -o json
+ones-cli meta images list --service fexray-frontend-default -o json
+ones-cli deploy changeflow-infos list --service fexray-frontend-default --output-format json
+ones-cli deploy workloadgroups check --service fexray-frontend-default --workload-groups '["qcsh-sit.fexray-frontend-default"]' --output-format json
+ones-cli deploy create --service fexray-frontend-default --changeflow-info sit --workload-groups '["qcsh-sit.fexray-frontend-default"]' --image-tag <tag> -y --output-format json
+ones-cli deploy detail --changeflow <changeflowName> --output-format json
+```
+
+- `ones-cli schema deploy.create --format json` maps this path to backend tool
+  `create_deploy_with_watch`. The request payload fields are
+  `applicationChildName`, `changeflowInfoName`, `repoTag`, and
+  `workloadGroups`; there is no client-side `owner` field to repair.
+- On 2026-05-21, the correct CLI command for
+  `fexray-frontend-default` / `qcsh-sit.fexray-frontend-default` /
+  `feat-ai-eval-layout-density-1ae6d4e6` returned:
+
+```text
+permission denied: application 'fexray' access denied: 无权限！如需要，您可到服务树申请当前应用「研发owner」角色
+```
+
+- Treat that error as an ONES backend authorization/precheck inconsistency when
+  these read-only checks pass at the same time:
+  `meta applications permissions list` shows `fexray` role `rd`,
+  `workloadgroups check` returns `canDeploy`, and the image candidate has
+  `properties.canPublish=true`.
+- Also check the change-freeze window. On 2026-05-21, `ones-cli create` returned
+  the misleading `研发owner` block at 21:33 after the 618 freeze window started
+  at 20:00, even though the same service had successful SIT releases before the
+  freeze. Treat this as a likely freeze-policy/CLI-tool permission escalation,
+  not as proof that the user lost normal deploy permission.
+- The ONES web release page for the same service uses a different API layer:
+  `/api/v1/x/application/changeflow/info/...`, `/api/v1/x/deploy/check`,
+  `/api/v1/x/tag/list`, and the modal submit path calls frontend request key
+  `DEPLOY_CREATE`, which maps to `/api/v1/x/deploy/create`. The CLI create path
+  posts to dynamic tool `/api/v1/a/tools/create_deploy_with_watch`. If CLI
+  returns the `研发owner` block while the web precheck succeeds, treat it as a
+  CLI/dynamic-tool backend permission mismatch, not as proof that the user lacks
+  service deploy rights.
+- Do not "fix" this by asking for a project/lane. If a real publish is required
+  and CLI create is blocked this way, capture the failed command plus the
+  permission evidence, then either use the authenticated ONES service release
+  page with the same service/tag or escalate to ONES backend owners for
+  `create_deploy_with_watch` permission logs.
+
 - The installed `ones-cli deploy` help currently shows project-style flags such
   as `--project`, `--service`, and `--image-tag`.
 - Do not ask the user for a project by default. If this CLI cannot express
   direct service SIT release, treat it as CLI capability mismatch and use the
   service SIT platform flow or authenticated web UI.
+- CLI shape note: recent successful releases used the nested `deploy` command
+  group (`ones-cli deploy create/detail/...`). If older notes mention
+  top-level `ones-cli create`, verify the installed CLI schema first with
+  `ones-cli schema deploy --format json` and use the command group that exists.
 
 Observed credential state on this machine:
 

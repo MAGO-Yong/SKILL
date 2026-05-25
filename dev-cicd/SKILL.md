@@ -13,17 +13,39 @@ metadata:
 
 | 用户说 | 应做事项 |
 |--------|----------|
-| “改完了”、“好了”、“你看看” | 自动跑 `make check`，通过后按上下文决定是否提交 |
+| “改完了”、“好了”、“你看看” | 先按当前上下文做轻量检查；只有用户明确要验证/构建/提交/发布时才跑完整 `make check` 或交付流程 |
 | “验证发布到 sit”、“发 SIT”、“发布 SIT” | 执行标准 SIT 流程：preflight -> dependency repair -> validation -> commit -> push -> image/build discovery -> deploy -> smoke check |
 | “发一下”、“部署”、“上线”、“发布” | 先判断目标环境；测试环境直接走标准流程；生产环境只做准入检查、版本确认和手动发布交接，不自动触发生产发布 |
-| 开始写代码/修改文件/实现功能/修 bug | 本地触发开发前置预检：确认仓库、分支、remote、重复分支、diff 范围、后续验证/发布路径；不构建、不推送、不部署 |
+| 开始写代码/修改文件/实现功能/修 bug | 只做轻量开发前置预检：确认仓库、分支、remote、重复分支、diff 范围、后续最小验证路径；不构建、不推送、不部署 |
 | “新建项目/服务” | 引导 RedCloud 创建应用 -> `ones-cli` 创建服务 -> 提醒 HCMP 资源审批 |
 | 改了 `Dockerfile` / `Makefile` / CICD 文件 | 自动执行 Dockerfile 和构建预检 |
-| `docker push` 报 unauthorized | 直接使用下方公司制品库登录命令处理 |
+| `docker push` 报 unauthorized | 检查 registry 和登录态，指导用户通过安全方式登录，不在 skill 中保存或打印密码 |
 | 发布后报“部署组为空” | 告知需要去 HCMP 审批资源，并给出入口 |
 | 需要 RedCloud/HCMP 网页操作 | 给链接并说明用户需要在页面做什么 |
 
 报错时先定位和修复，不要只把日志原样丢给用户。
+
+## 专项 Skill 路由
+
+通用 CICD 只负责总入口。遇到明确项目或平台时，先调用对应专项
+skill 的门禁，避免把不同发布路径混在一起。
+
+| 场景 | 必须先用的专项规则 |
+|------|--------------------|
+| XRay 前端开发、构建、CR、SIT、生产准备 | `xray-frontend-dev`：检查业务 diff 白名单、Delight/前端标准、Changesets 版本和构建证据 |
+| 任意 SIT 发布或 ONES 部署 | `release-to-sit`：分类服务类型、镜像/制品、workload group、changeflow 和 smoke |
+| 生产发布 | `release-to-sit` 的生产 handoff 规则；Codex 不自动触发生产 changeflow |
+
+如果专项 skill 和通用流程冲突，以更具体的专项 skill 为准。例如
+XRay 前端发布时，不能因为通用 Node 项目习惯而修改平台级契约、升级
+无关 workspace 依赖、用 FE static artifact 冒充 ONES Docker image，或用
+feature/SIT-only 版本做生产发布。
+
+平台级契约包括但不限于 lint/format/TS/build/CI 配置、依赖和 lockfile、
+workspace 拓扑、全局 request/auth/router/layout/store/telemetry/error
+handling、全局样式和主题 token、共享组件基础设施、部署配置和发布脚本。
+功能迭代如果必须改这些内容，应拆成单独平台任务、说明影响面、单独提交，
+并做更大范围验证；不能为了单个功能快速过 lint/build/release 顺手带入。
 
 ## 状态化输出
 
@@ -67,7 +89,7 @@ metadata:
 
 ## 用户引导模式
 
-默认假设用户不需要记住 CICD 和发布细节。只要开始写代码或进入验证/发布流程，就用轻量引导卡带用户走完整链路。
+默认假设用户不需要记住 CICD 和发布细节。普通开发只做简短状态说明；进入验证/发布流程时，再用轻量引导卡带用户走完整链路。
 
 开工时展示：
 
@@ -100,8 +122,16 @@ metadata:
 2. 检测同一需求是否存在多个相似 feature 分支或旧 CR/MR。
 3. 选定或提示 canonical 分支策略；不在多个分支上分散同一批改动。
 4. 检查当前未提交 diff，识别用户已有改动和无关改动。
-5. 记录后续最小验证路径：本地静态检查、测试、构建、SIT 或生产准入。
-6. 不执行 build/push/deploy，不创建 CR/MR，不触发生产动作。
+5. 对 monorepo 先判定 owning package/module，并记录不应触碰的
+   out-of-scope 文件或 workspace。
+6. 扫描 diff 文件名和内容里是否有 mock/debug/demo/sample/fixture/test-data
+   等临时数据或开关；默认不能带入发布分支。
+7. 记录后续最小验证路径：本地静态检查、测试、构建、SIT 或生产准入。
+8. 不执行 build/push/deploy，不创建 CR/MR，不触发生产动作。
+
+如果后续进入发布，必须再次复核 diff。开发期间为了绕过 lint、install、
+build 而临时改过的平台级契约、依赖、lockfile、公共工具文件，不能默认带入
+CR/SIT/生产分支。
 
 ### 依赖与工具链修复
 
@@ -127,6 +157,34 @@ metadata:
 7. Deploy：发布到目标 SIT project/service/workload group。`ones-cli project list` 为空不等于不能发布，要继续查服务详情、发布历史、部署组和平台入口。
 8. Monitor：轮询 changeflow/detail 到 success/failed；失败时拉诊断日志并修复可修问题。
 9. Smoke check：用 SIT 页面或 API 验证核心路径可访问，最后给状态表和链接。
+
+发布前必须先按服务类型分流：
+
+| 类型 | 发布凭证 | 关键检查 |
+|------|----------|----------|
+| 前端 Docker 服务 | ONES 服务镜像 tag | `ones-cli meta images list --service <service> --query <sha/tag>` 必须能查到 |
+| FE 静态制品 | FE Platform/formula app version | 上传成功不等于 ONES Docker 镜像，也不等于 SIT 生效 |
+| 后端服务 | ONES 服务镜像 tag | 镜像应匹配 branch/commit，并且服务部署组可发布 |
+| 生产发布 | master 镜像/版本 | Codex 只做准入和交接，不自动点生产发布 |
+
+不要把一种类型的产物当成另一种类型发布。尤其是前端：
+`formula deploy-fe -e test` 的静态制品版本不能直接作为
+`fexray-frontend-default` 这类 ONES Docker 服务的镜像 tag。
+
+进入 deploy 之前必须完成发布前预防门禁：lockfile/specifier 一致、分支/tag
+Docker-safe、目标服务镜像真实存在且匹配 commit、FE static 与 ONES service
+类型不混用、workload group 可发布、CLI 权限与 UI/服务读权限不矛盾、没有
+误带 mock/debug/test data。任一门禁失败都先修输入，不创建 changeflow。
+
+如果 ONES changeflow 卡在 `Running` 且 Pod 是 `ErrImagePull` /
+`ImagePullBackOff`：
+
+1. 用 `ones-cli deploy diagnose --changeflow <name> -o json` 确认缺失镜像。
+2. 用 `ones-cli deploy workloadgroups check ...` 确认部署组是否被占用。
+3. 不要继续创建第二个发布。
+4. CLI 没有 cancel 命令时，打开 ONES 页面让用户点
+   `取消并暂停当前阶段` 或同等取消动作。
+5. 只有部署组回到 `canDeploy` 后，才用真实存在的新镜像重发。
 
 当 CLI 不能完成发布但页面可以完成时，用 Chrome 登录态继续操作 ONES 页面；只有需要用户二次认证、审批或权限缺失时才停下来。
 
@@ -215,11 +273,15 @@ ones-cli meta services create \
 
 ### 代码检查
 
+Use `make check` only when the repo defines it as the accepted project check.
+For XRay/frontend packages or repos without a Makefile, use the owning package's
+documented validation command instead.
+
 ```bash
 make check
 ```
 
-所有代码必须通过检查后才构建或发布。若失败，优先修复再继续。
+所有代码必须通过适合当前仓库的检查后才构建或发布。若失败，优先修复再继续。
 
 ### 构建镜像
 
@@ -247,34 +309,41 @@ make push
 约定：
 
 - 镜像仓库：`artifactory.devops.xiaohongshu.com/devops/<项目名>`
-- 镜像 tag：`<git-short-hash>-<YYYYMMDD>`
-- unauthorized 时执行公司制品库登录：
+- 镜像 tag：个人/自管镜像可用 `<git-short-hash>-<YYYYMMDD>`；公司平台或 ONES
+  服务以平台真实生成并可查询到的 tag 为准，不手工编造。
+- unauthorized 时不要在 skill 中保存或打印密码。先确认 registry，再引导用户使用公司推荐的 SSO/token/credential helper 登录：
 
 ```bash
-docker login artifactory.devops.xiaohongshu.com # use interactive login or credential helper
+docker login artifactory.devops.xiaohongshu.com
 ```
 
 ### 发布服务
 
+ONES 发布命令会随服务类型和 CLI 版本变化。进入 ONES/SIT 发布时，使用
+`release-to-sit` 的服务类型分流、预防门禁和当前 CLI 命令说明作为准则；
+不要直接照抄旧的 `deploy create` 示例。
+
+只读发现可以从这些命令开始：
+
 ```bash
-ones-cli deploy changeflow-infos list --service <服务名> -o json
+ones-cli changeflow-infos list --service <服务名> --output-format json
 ```
 
 ```bash
-ones-cli deploy create \
-  --service <服务名> \
-  --changeflow-info <发布流程名> \
-  --workload-groups '["<部署组>"]' \
-  --image-tag <镜像tag> -y
+ones-cli workloadgroups check --service <服务名> --workload-groups '<json>' --output-format json
 ```
 
 ```bash
-ones-cli deploy detail --changeflow <发布流程实例名> -o json
+ones-cli meta images list --service <服务名> --output-format json
 ```
 
-发布后轮询到 Finish 或 Failed。Failed 时继续定位，若是资源审批/部署组缺失，则明确提示用户去 HCMP 处理。
+真实创建 changeflow 前，必须确认服务、环境、workload group、image tag、
+权限和预防门禁都通过；否则停在 handoff/blocked，不创建发布。
 
 ### 完整流程
+
+下面只是自管项目的示例流程。XRay、ONES 或内部平台发布时，以专项 skill
+和平台实际 gates 为准。
 
 ```bash
 make check
@@ -283,15 +352,15 @@ git add <相关文件>
 git commit -m "<message>"
 git push
 make push
-ones-cli deploy create ...
-ones-cli deploy detail ...
+release-to-sit: discover service/image/workload -> prevention gates -> deploy or handoff
 ```
 
 ## 公司基础设施
 
 - 镜像仓库：`artifactory.devops.xiaohongshu.com`
 - Docker Hub 代理：`docker.m.daocloud.io/`
-- Node 内部源：`artifactory.devops.xiaohongshu.com/library/node:24-alpine`
+- Node 内部源示例：`artifactory.devops.xiaohongshu.com/library/node:<version>`；
+  具体版本必须以项目 `engines`、README、CI 镜像或 package manager 配置为准。
 - GitLab：`code.devops.xiaohongshu.com`
 - 部署平台：ONES，命令为 `ones-cli`
 - 应用创建：RedCloud，`redcloud.devops.xiaohongshu.com`
@@ -304,4 +373,4 @@ ones-cli deploy detail ...
 - 不要回滚用户已有改动。
 - 写操作、发版、回滚等高影响动作如果用户意图不明确，需要先简短确认。
 - 需要网页操作时，说明具体入口和用户应点击/填写的内容。
-- 这是用户本机自用 skill，公司制品库密码可按上方命令使用；除非排障必要，不要在最终回复中重复展示密码。
+- 不要在 skill、命令或回复中保存、打印或复述密码/token；需要登录时使用公司推荐的 SSO、token 或 credential helper。
